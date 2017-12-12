@@ -104,10 +104,10 @@ class LumpNavReplayWidget(ScriptedLoadableModuleWidget):
 
 class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     
-  def loadAllData(self, lumpNavDirectory, recordingFile, trackingFile):
+  def loadAllData(self, lumpNavDirectory, recordingFile): #,trackingFile
     self.lumpNavDirectory = lumpNavDirectory
     self.recordingFile = recordingFile
-    self.trackingFile = trackingFile
+    #self.trackingFile = trackingFile
     self.loadAllTransforms()
     self.loadRecordingSequences()
     #self.loadTrackingSequences()
@@ -220,9 +220,9 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.recordingData_trackerToReferenceNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
     self.recordingData_needleToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
     self.recordingData_cauteryToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
-    self.trackingData_trackerToReferenceNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
-    self.trackingData_needleToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
-    self.trackingData_cauteryToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
+    #self.trackingData_trackerToReferenceNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
+    #self.trackingData_needleToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
+    #self.trackingData_cauteryToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
 
     self.trackerToReferenceNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
     self.cauteryToTrackerNode.SetAndObserveTransformNodeID(self.trackerToReferenceNode.GetID())

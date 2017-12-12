@@ -51,34 +51,31 @@ class LumpNavReplayWidget(ScriptedLoadableModuleWidget):
     self.layout.addStretch(1)
     
     self.dataDirectoryDialog = qt.QLineEdit() #qt.QFileDialog()
-    #self.dataDirectoryDialog.setFileMode(self.dataDirectoryDialog.DirectoryOnly)
     self.dataDirectoryDialog.setToolTip("The directory where the lumpnav data has been saved.")
     parametersFormLayout.addRow(self.dataDirectoryDialog)
     
     self.recordingFileDialog = qt.QLineEdit() #qt.QFileDialog()
-    #self.recordingFileDialog.setFileMode(self.recordingFileDialog.DirectoryOnly)
     self.recordingFileDialog.setToolTip("The file path to the recording mha file.")
     parametersFormLayout.addRow(self.recordingFileDialog)
     
-    self.trackingFileDialog = qt.QLineEdit() #qt.QFileDialog()
-    #self.trackingFileDialog.setFileMode(self.trackingFileDialog.DirectoryOnly)
-    self.trackingFileDialog.setToolTip("The file path to the tracking mha file.")
-    parametersFormLayout.addRow(self.trackingFileDialog)
+    #self.trackingFileDialog = qt.QLineEdit() #qt.QFileDialog()
+    #self.trackingFileDialog.setToolTip("The file path to the tracking mha file.")
+    #parametersFormLayout.addRow(self.trackingFileDialog)
     
     self.loadAllDataButton = qt.QPushButton("Load All Data")
     self.loadAllDataButton.setToolTip("Load the pertinent data for evaluating tumor tracking.")
     parametersFormLayout.addRow(self.loadAllDataButton)
     self.loadAllDataButton.connect('clicked()', self.onLoadAllDataButtonPressed)
 
-    self.changeToRecordingDataButton = qt.QPushButton("Change to Recording")
-    self.changeToRecordingDataButton.setToolTip("Switch to Recording Data (preprocessing).")
-    parametersFormLayout.addRow(self.changeToRecordingDataButton)
-    self.changeToRecordingDataButton.connect('clicked()', self.onChangeToRecordingDataButtonPressed)
+    #self.changeToRecordingDataButton = qt.QPushButton("Change to Recording")
+    #self.changeToRecordingDataButton.setToolTip("Switch to Recording Data (preprocessing).")
+    #parametersFormLayout.addRow(self.changeToRecordingDataButton)
+    #self.changeToRecordingDataButton.connect('clicked()', self.onChangeToRecordingDataButtonPressed)
 
-    self.changeToTrackingDataButton = qt.QPushButton("Change to Tracking")
-    self.changeToTrackingDataButton.setToolTip("Switch to Tracking Data (evaluation).")
-    parametersFormLayout.addRow(self.changeToTrackingDataButton)
-    self.changeToTrackingDataButton.connect('clicked()', self.onChangeToTrackingDataButtonPressed)
+    #self.changeToTrackingDataButton = qt.QPushButton("Change to Tracking")
+    #self.changeToTrackingDataButton.setToolTip("Switch to Tracking Data (evaluation).")
+    #parametersFormLayout.addRow(self.changeToTrackingDataButton)
+    #self.changeToTrackingDataButton.connect('clicked()', self.onChangeToTrackingDataButtonPressed)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -87,7 +84,7 @@ class LumpNavReplayWidget(ScriptedLoadableModuleWidget):
     self.onSelect()
   
   def onLoadAllDataButtonPressed(self):
-    self.logic.loadAllData(self.dataDirectoryDialog.text,self.recordingFileDialog.text,self.trackingFileDialog.text)
+    self.logic.loadAllData(self.dataDirectoryDialog.text,self.recordingFileDialog.text) #,self.trackingFileDialog.text
 
   def onChangeToRecordingDataButtonPressed(self):
     self.logic.changeToRecordingData()
@@ -113,7 +110,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.trackingFile = trackingFile
     self.loadAllTransforms()
     self.loadRecordingSequences()
-    self.loadTrackingSequences()
+    #self.loadTrackingSequences()
     self.loadAllModels()
     self.changeToRecordingData()
 
@@ -174,7 +171,6 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.recordingData_trackerToReferenceNode = self.initializeLinearTransformNode("recordingData*-TrackerToReference")
     self.recordingData_needleToTrackerNode = self.initializeLinearTransformNode("recordingData*-NeedleToTracker")
     self.recordingData_cauteryToTrackerNode = self.initializeLinearTransformNode("recordingData*-CauteryToTracker")
-    self.recordingData_sequenceBrowserNode = self.getSequenceBrowserNode('recordingData*')
     self.probeToTrackerNode = self.initializeLinearTransformNode("recordingData*-ProbeToTracker")
     self.imageToTransducerNode = self.initializeLinearTransformNode("recordingData*-ImageToTransducer")
     self.imageNode = getNode("recordingData*-Image")
@@ -190,7 +186,6 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.trackingData_trackerToReferenceNode = self.initializeLinearTransformNode("trackingData*-TrackerToReference")
     self.trackingData_needleToTrackerNode = self.initializeLinearTransformNode("trackingData*-NeedleToTracker")
     self.trackingData_cauteryToTrackerNode = self.initializeLinearTransformNode("trackingData*-CauteryToTracker")
-    self.trackingData_sequenceBrowserNode = self.getSequenceBrowserNode('trackingData*')
     self.probeToTrackerNode = self.initializeLinearTransformNode("recordingData*-ProbeToTracker")
     self.imageToTransducerNode = self.initializeLinearTransformNode("recordingData*-ImageToTransducer")
     self.imageNode = getNode("recordingData*-Image")
@@ -198,19 +193,10 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.cauteryToTrackerNode = self.trackingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.trackingData_needleToTrackerNode
 
-  def getSequenceBrowserNode(self, pattern):
-    nodes = slicer.util.getNodes(pattern)
-    keys = nodes.keys()
-    for key in keys:
-      if '-' not in key: # sequence browser node will not have a hyphen in its name, because it isn't in the filename
-        return nodes[key]
-    logging.error("No sequence browser node found for pattern: " + pattern)
-
   def changeToRecordingData(self):
     self.trackerToReferenceNode = self.recordingData_trackerToReferenceNode
     self.cauteryToTrackerNode = self.recordingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.recordingData_needleToTrackerNode
-    self.sequenceBrowserNode = self.recordingData_sequenceBrowserNode
     self.updateModelVisibility(inTrackingMode=False)
     self.setupTransformHierarchy()
 
@@ -218,7 +204,6 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.trackerToReferenceNode = self.trackingData_trackerToReferenceNode
     self.cauteryToTrackerNode = self.trackingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.trackingData_needleToTrackerNode
-    self.sequenceBrowserNode = self.trackingData_sequenceBrowserNode
     self.updateModelVisibility(inTrackingMode=True)
     self.setupTransformHierarchy()
 

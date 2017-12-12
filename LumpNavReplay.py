@@ -165,30 +165,32 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
 
   def loadRecordingSequences(self):
     logging.debug("loading \'recording\' sequences")
-    self.removeExistingNodes("recordingData*")
+    recordingFileBaseName = os.path.splitext(os.path.basename(self.recordingFile))[0]
+    self.removeExistingNodes(recordingFileBaseName + "*")
     slicer.app.coreIOManager().loadNodes('Sequence Metafile',{'fileName':self.recordingFile})
     #slicer.vtkSlicerMetafileImporterLogic().ReadSequenceMetafile(self.lumpNavDirectory + "recordingData.mha")
-    self.recordingData_trackerToReferenceNode = self.initializeLinearTransformNode("recordingData*-TrackerToReference")
-    self.recordingData_needleToTrackerNode = self.initializeLinearTransformNode("recordingData*-NeedleToTracker")
-    self.recordingData_cauteryToTrackerNode = self.initializeLinearTransformNode("recordingData*-CauteryToTracker")
-    self.probeToTrackerNode = self.initializeLinearTransformNode("recordingData*-ProbeToTracker")
-    self.imageToTransducerNode = self.initializeLinearTransformNode("recordingData*-ImageToTransducer")
-    self.imageNode = getNode("recordingData*-Image")
+    self.recordingData_trackerToReferenceNode = self.initializeLinearTransformNode(recordingFileBaseName + "-TrackerToReference")
+    self.recordingData_needleToTrackerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-NeedleToTracker")
+    self.recordingData_cauteryToTrackerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-CauteryToTracker")
+    self.probeToTrackerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-ProbeToTracker")
+    self.imageToTransducerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-ImageToTransducer")
+    self.imageNode = getNode(recordingFileBaseName + "-Image")
     self.trackerToReferenceNode = self.recordingData_trackerToReferenceNode
     self.cauteryToTrackerNode = self.recordingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.recordingData_needleToTrackerNode
 
   def loadTrackingSequences(self):
     logging.debug("loading \'tracking\' sequences")
+    trackingFileBaseName = os.path.splitext(os.path.basename(self.trackingFile))[0]
     self.removeExistingNodes("trackingData*")
     slicer.app.coreIOManager().loadNodes('Sequence Metafile',{'fileName':self.trackingFile})
     #slicer.vtkSlicerMetafileImporterLogic().ReadSequenceMetafile(self.lumpNavDirectory + "trackingData.mha")
-    self.trackingData_trackerToReferenceNode = self.initializeLinearTransformNode("trackingData*-TrackerToReference")
-    self.trackingData_needleToTrackerNode = self.initializeLinearTransformNode("trackingData*-NeedleToTracker")
-    self.trackingData_cauteryToTrackerNode = self.initializeLinearTransformNode("trackingData*-CauteryToTracker")
-    self.probeToTrackerNode = self.initializeLinearTransformNode("recordingData*-ProbeToTracker")
-    self.imageToTransducerNode = self.initializeLinearTransformNode("recordingData*-ImageToTransducer")
-    self.imageNode = getNode("recordingData*-Image")
+    self.trackingData_trackerToReferenceNode = self.initializeLinearTransformNode(trackingFileBaseName + "-TrackerToReference")
+    self.trackingData_needleToTrackerNode = self.initializeLinearTransformNode(trackingFileBaseName + "-NeedleToTracker")
+    self.trackingData_cauteryToTrackerNode = self.initializeLinearTransformNode(trackingFileBaseName + "-CauteryToTracker")
+    self.probeToTrackerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-ProbeToTracker")
+    self.imageToTransducerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-ImageToTransducer")
+    self.imageNode = getNode(recordingFileBaseName + "-Image")
     self.trackerToReferenceNode = self.trackingData_trackerToReferenceNode
     self.cauteryToTrackerNode = self.trackingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.trackingData_needleToTrackerNode

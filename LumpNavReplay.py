@@ -33,6 +33,16 @@ class LumpNavReplayWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
+  
+  transducerToProbeFileDialog = None
+  sceneFileDialog = None
+  recordingFileDialog = None
+  trackingFileDialog = None
+  
+  # treat these two values as enums
+  currentDatasetRecordingString  = "Recording"
+  currentDatasetTrackingString = "Tracking"
+  currentDataset = currentDatasetRecordingString
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
@@ -40,57 +50,137 @@ class LumpNavReplayWidget(ScriptedLoadableModuleWidget):
     self.logic = LumpNavReplayLogic()
 
     parametersCollapsibleButton = ctk.ctkCollapsibleButton()
-    parametersCollapsibleButton.text = "Parameters"
+    parametersCollapsibleButton.text = "Controls"
     self.layout.addWidget(parametersCollapsibleButton)
 
     # Layout within the dummy collapsible button
     parametersFormLayout = qt.QFormLayout(parametersCollapsibleButton)
     
-    self.evaluateTumorTrackingLabel = qt.QLabel("Evaluate Tumor Tracking")
-    parametersFormLayout.addRow(self.evaluateTumorTrackingLabel)
-    self.layout.addStretch(1)
+    self.transducerToProbeFileLayout = qt.QHBoxLayout()
+    self.transducerToProbeFileLabel = qt.QLabel("Transducer to Probe file: ")
+    self.transducerToProbeFileLayout.addWidget(self.transducerToProbeFileLabel)
+    self.transducerToProbeFileLineEdit = qt.QLineEdit() #qt.QFileDialog()
+    self.transducerToProbeFileLineEdit.setToolTip("The directory where the lumpnav data has been saved.")
+    self.transducerToProbeFileLayout.addWidget(self.transducerToProbeFileLineEdit)
+    self.transducerToProbeFileSelectButton = qt.QPushButton("Select")
+    self.transducerToProbeFileLayout.addWidget(self.transducerToProbeFileSelectButton)
+    self.transducerToProbeFileSelectButton.connect('clicked()', self.onTransducerToProbeFileSelectButtonPressed)
+    parametersFormLayout.addRow(self.transducerToProbeFileLayout)
     
-    self.dataDirectoryDialog = qt.QLineEdit() #qt.QFileDialog()
-    self.dataDirectoryDialog.setToolTip("The directory where the lumpnav data has been saved.")
-    parametersFormLayout.addRow(self.dataDirectoryDialog)
+    self.sceneFileLayout = qt.QHBoxLayout()
+    self.sceneFileLabel = qt.QLabel("Scene file: ")
+    self.sceneFileLayout.addWidget(self.sceneFileLabel)
+    self.sceneFileLineEdit = qt.QLineEdit() #qt.QFileDialog()
+    self.sceneFileLineEdit.setToolTip("The directory where the lumpnav data has been saved.")
+    self.sceneFileLayout.addWidget(self.sceneFileLineEdit)
+    self.sceneFileSelectButton = qt.QPushButton("Select")
+    self.sceneFileLayout.addWidget(self.sceneFileSelectButton)
+    self.sceneFileSelectButton.connect('clicked()', self.onSceneFileSelectButtonPressed)
+    parametersFormLayout.addRow(self.sceneFileLayout)
     
-    self.recordingFileDialog = qt.QLineEdit() #qt.QFileDialog()
-    self.recordingFileDialog.setToolTip("The file path to the recording mha file.")
-    parametersFormLayout.addRow(self.recordingFileDialog)
+    self.recordingFileLayout = qt.QHBoxLayout()
+    self.recordingFileLabel = qt.QLabel("Recording file: ")
+    self.recordingFileLayout.addWidget(self.recordingFileLabel)
+    self.recordingFileLineEdit = qt.QLineEdit() #qt.QFileDialog()
+    self.recordingFileLineEdit.setToolTip("The file path to the recording mha file.")
+    self.recordingFileLayout.addWidget(self.recordingFileLineEdit)
+    self.recordingFileSelectButton = qt.QPushButton("Select")
+    self.recordingFileLayout.addWidget(self.recordingFileSelectButton)
+    self.recordingFileSelectButton.connect('clicked()', self.onRecordingFileSelectButtonPressed)
+    parametersFormLayout.addRow(self.recordingFileLayout)
     
-    #self.trackingFileDialog = qt.QLineEdit() #qt.QFileDialog()
-    #self.trackingFileDialog.setToolTip("The file path to the tracking mha file.")
-    #parametersFormLayout.addRow(self.trackingFileDialog)
+    self.trackingFileLayout = qt.QHBoxLayout()
+    self.trackingFileLabel = qt.QLabel("Tracking file: ")
+    self.trackingFileLayout.addWidget(self.trackingFileLabel)
+    self.trackingFileLineEdit = qt.QLineEdit() #qt.QFileDialog()
+    self.trackingFileLineEdit.setToolTip("The file path to the recording mha file.")
+    self.trackingFileLayout.addWidget(self.trackingFileLineEdit)
+    self.trackingFileSelectButton = qt.QPushButton("Select")
+    self.trackingFileLayout.addWidget(self.trackingFileSelectButton)
+    self.trackingFileSelectButton.connect('clicked()', self.onTrackingFileSelectButtonPressed)
+    parametersFormLayout.addRow(self.trackingFileLayout)
     
     self.loadAllDataButton = qt.QPushButton("Load All Data")
     self.loadAllDataButton.setToolTip("Load the pertinent data for evaluating tumor tracking.")
     parametersFormLayout.addRow(self.loadAllDataButton)
     self.loadAllDataButton.connect('clicked()', self.onLoadAllDataButtonPressed)
 
-    #self.changeToRecordingDataButton = qt.QPushButton("Change to Recording")
-    #self.changeToRecordingDataButton.setToolTip("Switch to Recording Data (preprocessing).")
-    #parametersFormLayout.addRow(self.changeToRecordingDataButton)
-    #self.changeToRecordingDataButton.connect('clicked()', self.onChangeToRecordingDataButtonPressed)
-
-    #self.changeToTrackingDataButton = qt.QPushButton("Change to Tracking")
-    #self.changeToTrackingDataButton.setToolTip("Switch to Tracking Data (evaluation).")
-    #parametersFormLayout.addRow(self.changeToTrackingDataButton)
-    #self.changeToTrackingDataButton.connect('clicked()', self.onChangeToTrackingDataButtonPressed)
+    self.switchDataButton = qt.QPushButton("Switch to " + self.currentDatasetTrackingString + " data set")
+    self.switchDataButton.setToolTip("Switch between recording and tracking data sets.")
+    self.switchDataButton.setEnabled(False)
+    parametersFormLayout.addRow(self.switchDataButton)
+    self.switchDataButton.connect('clicked()', self.onSwitchDataButtonPressed)
 
     # Add vertical spacer
     self.layout.addStretch(1)
 
     # Refresh Apply button state
     self.onSelect()
-  
+
+  def onTransducerToProbeFileSelectButtonPressed(self):
+    if not self.transducerToProbeFileDialog:
+      self.transducerToProbeFileDialog = qt.QFileDialog(self.parent)
+      self.initializeFileDialog(self.transducerToProbeFileDialog)
+    self.transducerToProbeFileDialog.connect("fileSelected(QString)", self.onTransducerToProbeFileSelected)
+    self.transducerToProbeFileDialog.show()
+    
+  def onTransducerToProbeFileSelected(self, filePath):
+    self.transducerToProbeFileLineEdit.text = filePath
+    
+  def onSceneFileSelectButtonPressed(self):
+    if not self.sceneFileDialog:
+      self.sceneFileDialog = qt.QFileDialog(self.parent)
+      self.initializeFileDialog(self.sceneFileDialog)
+    self.sceneFileDialog.connect("fileSelected(QString)", self.onSceneFileSelected)
+    self.sceneFileDialog.show()
+    
+  def onSceneFileSelected(self, filePath):
+    self.sceneFileLineEdit.text = filePath
+
+  def onRecordingFileSelectButtonPressed(self):
+    if not self.recordingFileDialog:
+      self.recordingFileDialog = qt.QFileDialog(self.parent)
+      self.initializeFileDialog(self.recordingFileDialog)
+    self.recordingFileDialog.connect("fileSelected(QString)", self.onRecordingFileSelected)
+    self.recordingFileDialog.show()
+    
+  def onRecordingFileSelected(self, filePath):
+    self.recordingFileLineEdit.text = filePath
+
+  def onTrackingFileSelectButtonPressed(self):
+    if not self.trackingFileDialog:
+      self.trackingFileDialog = qt.QFileDialog(self.parent)
+      self.initializeFileDialog(self.trackingFileDialog)
+    self.trackingFileDialog.connect("fileSelected(QString)", self.onTrackingFileSelected)
+    self.trackingFileDialog.show()
+    
+  def onTrackingFileSelected(self, filePath):
+    self.trackingFileLineEdit.text = filePath
+    
+  def initializeFileDialog(self, fileDialog):
+    fileDialog.options = fileDialog.DontUseNativeDialog
+    fileDialog.fileMode = fileDialog.ExistingFile
+    fileDialog.acceptMode = fileDialog.AcceptOpen
+
   def onLoadAllDataButtonPressed(self):
-    self.logic.loadAllData(self.dataDirectoryDialog.text,self.recordingFileDialog.text) #,self.trackingFileDialog.text
+    self.logic.loadAllData(self.transducerToProbeFileLineEdit.text, \
+                           self.sceneFileLineEdit.text, \
+                           self.recordingFileLineEdit.text, \
+                           self.trackingFileLineEdit.text)
+    self.currentDataset = self.currentDatasetRecordingString
+    self.switchDataButton.setEnabled(True)
 
-  def onChangeToRecordingDataButtonPressed(self):
-    self.logic.changeToRecordingData()
-
-  def onChangeToTrackingDataButtonPressed(self):
-    self.logic.changeToTrackingData()
+  def onSwitchDataButtonPressed(self):
+    if (self.currentDataset == self.currentDatasetRecordingString):
+      self.logic.changeToTrackingData()
+      self.currentDataset = self.currentDatasetTrackingString
+      self.switchDataButton.text = "Switch to " + self.currentDatasetRecordingString
+    elif (self.currentDataset == self.currentDatasetTrackingString):
+      self.logic.changeToRecordingData()
+      self.currentDataset = self.currentDatasetRecordingString
+      self.switchDataButton.text = "Switch to " + self.currentDatasetTrackingString
+    else:
+      logging.error("LumpNavReplayWidget is in an unexpected state - current dataset is " + self.currentDataset)
     
   def cleanup(self):
     pass
@@ -104,71 +194,31 @@ class LumpNavReplayWidget(ScriptedLoadableModuleWidget):
 
 class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     
-  def loadAllData(self, lumpNavDirectory, recordingFile): #,trackingFile
-    self.lumpNavDirectory = lumpNavDirectory
-    self.recordingFile = recordingFile
-    #self.trackingFile = trackingFile
-    self.loadAllTransforms()
-    self.loadRecordingSequences()
-    #self.loadTrackingSequences()
-    self.loadAllModels()
+  def loadAllData(self, transducerToProbeFile, sceneFile, recordingFile, trackingFile): #,trackingFile
+    slicer.mrmlScene.Clear(False)
+    slicer.util.loadTransform(transducerToProbeFile)
+    self.loadScene(sceneFile)
+    self.loadRecordingSequences(recordingFile)
+    self.loadTrackingSequences(trackingFile)
     self.changeToRecordingData()
-
-  def loadAllTransforms(self):
-    logging.debug("loading transforms")
-
-    # These are necessary for constructing visualizations
-    self.referenceToRasNode = self.loadLinearTransformNode(self.lumpNavDirectory, "ReferenceToRas")
-    self.cauteryTipToCauteryNode = self.loadLinearTransformNode(self.lumpNavDirectory, "CauteryTipToCautery")
-    self.cauteryModelToCauteryTipNode = self.loadLinearTransformNode(self.lumpNavDirectory, "CauteryModelToCauteryTip")
-
-    self.needleTipToNeedleNode = self.loadLinearTransformNode(self.lumpNavDirectory, "NeedleTipToNeedle")
-    self.needleModelToNeedleTip = self.loadLinearTransformNode(self.lumpNavDirectory, "NeedleModelToNeedleTip")
     
-    # For ultrasound images
-    self.transducerToProbeNode = self.loadLinearTransformNode(self.lumpNavDirectory, "TransducerToProbe")
+  def loadScene(self, fileName):
+    slicer.util.loadScene(fileName);
+    self.referenceToRasNode = slicer.mrmlScene.GetFirstNodeByName("ReferenceToRas")
+    self.cauteryTipToCauteryNode = slicer.mrmlScene.GetFirstNodeByName("CauteryTipToCautery")
+    self.cauteryModelToCauteryTipNode = slicer.mrmlScene.GetFirstNodeByName("CauteryModelToCauteryTip")
+    self.needleTipToNeedleNode = slicer.mrmlScene.GetFirstNodeByName("NeedleTipToNeedle")
+    self.needleModelToNeedleTip = slicer.mrmlScene.GetFirstNodeByName("NeedleModelToNeedleTip")
+    self.transducerToProbeNode = slicer.mrmlScene.GetFirstNodeByName("TransducerToProbe")
+    self.tumorModelNode_Needle = slicer.mrmlScene.GetFirstNodeByName("TumorModel")
+    self.cauteryModelNode_CauteryModel = slicer.mrmlScene.GetFirstNodeByName("CauteryModel")
+    self.needleModelNode_NeedleModel = slicer.mrmlScene.GetFirstNodeByName("NeedleModel")
 
-  def loadAllModels(self):
-    logging.debug("loading models")
-
-    self.removeExistingNodes("TumorModel*")
-
-    # Tumor models need to be reloaded, even if they already exist in the scene
-    slicer.util.loadModel(self.lumpNavDirectory + "TumorModel.vtk")
-    self.tumorModelNode_Needle = slicer.util.getNode("TumorModel*")
-    if (not self.tumorModelNode_Needle):
-      logging.warning("No tumor model found. Using sphere as placeholder.")
-      self.tumorModelNode_Needle = slicer.modules.createmodels.logic().CreateSphere(10.0)
-      self.tumorModelNode_Needle=slicer.util.getNode(pattern="SphereModel")
-    self.tumorModelNode_Needle.SetName("TumorModel_Needle")
-    self.tumorModelNode_Needle.GetDisplayNode().SetColor(0.0, 1.0, 0.0)
-    self.tumorModelNode_Needle.GetDisplayNode().SetOpacity(0.5)
-    self.tumorModelNode_Needle.GetDisplayNode().SliceIntersectionVisibilityOn()
-
-    # These models are constant, so it's okay to re-use these if they exist already
-    self.cauteryModelNode_CauteryModel=slicer.util.getNode(pattern="CauteryModel_Cautery")
-    if (not self.cauteryModelNode_CauteryModel):
-      slicer.modules.createmodels.logic().CreateNeedle(60, 1.0, 0, 0)
-      self.cauteryModelNode_CauteryModel=slicer.util.getNode(pattern="NeedleModel")
-    self.cauteryModelNode_CauteryModel.SetName("CauteryModel_Cautery")
-    self.cauteryModelNode_CauteryModel.GetDisplayNode().SetColor(1.0, 1.0, 0.0)
-    self.cauteryModelNode_CauteryModel.GetDisplayNode().SliceIntersectionVisibilityOn()
-
-    self.needleModelNode_NeedleModel=slicer.util.getNode(pattern="NeedleModel_NeedleModelOriginal")
-    if (not self.needleModelNode_NeedleModel):
-      slicer.modules.createmodels.logic().CreateNeedle(60, 1.0, 0, 0)
-      self.needleModelNode_NeedleModel=slicer.util.getNode(pattern="NeedleModel")
-    self.needleModelNode_NeedleModel.SetName("NeedleModel_NeedleModelOriginal")
-    self.needleModelNode_NeedleModel.GetDisplayNode().SetColor(0.0, 0.5, 0.5)
-    self.needleModelNode_NeedleModel.GetDisplayNode().SetOpacity(0.25)
-    self.needleModelNode_NeedleModel.GetDisplayNode().SliceIntersectionVisibilityOn()
-
-  def loadRecordingSequences(self):
+  def loadRecordingSequences(self, recordingFile):
     logging.debug("loading \'recording\' sequences")
-    recordingFileBaseName = os.path.splitext(os.path.basename(self.recordingFile))[0]
-    self.removeExistingNodes(recordingFileBaseName + "*")
-    slicer.app.coreIOManager().loadNodes('Sequence Metafile',{'fileName':self.recordingFile})
-    #slicer.vtkSlicerMetafileImporterLogic().ReadSequenceMetafile(self.lumpNavDirectory + "recordingData.mha")
+    recordingFileBaseName = os.path.splitext(os.path.basename(recordingFile))[0]
+    slicer.app.coreIOManager().loadNodes('Sequence Metafile',{'fileName':recordingFile})
+    self.recordingData_browserNode = slicer.mrmlScene.GetFirstNodeByName(recordingFileBaseName)
     self.recordingData_trackerToReferenceNode = self.initializeLinearTransformNode(recordingFileBaseName + "-TrackerToReference")
     self.recordingData_needleToTrackerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-NeedleToTracker")
     self.recordingData_cauteryToTrackerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-CauteryToTracker")
@@ -178,19 +228,16 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.trackerToReferenceNode = self.recordingData_trackerToReferenceNode
     self.cauteryToTrackerNode = self.recordingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.recordingData_needleToTrackerNode
+    self.setupResliceDriver()
 
-  def loadTrackingSequences(self):
+  def loadTrackingSequences(self, trackingFile):
     logging.debug("loading \'tracking\' sequences")
-    trackingFileBaseName = os.path.splitext(os.path.basename(self.trackingFile))[0]
-    self.removeExistingNodes("trackingData*")
-    slicer.app.coreIOManager().loadNodes('Sequence Metafile',{'fileName':self.trackingFile})
-    #slicer.vtkSlicerMetafileImporterLogic().ReadSequenceMetafile(self.lumpNavDirectory + "trackingData.mha")
+    trackingFileBaseName = os.path.splitext(os.path.basename(trackingFile))[0]
+    slicer.app.coreIOManager().loadNodes('Sequence Metafile',{'fileName':trackingFile})
+    self.trackingData_browserNode = slicer.mrmlScene.GetFirstNodeByName(trackingFileBaseName)
     self.trackingData_trackerToReferenceNode = self.initializeLinearTransformNode(trackingFileBaseName + "-TrackerToReference")
     self.trackingData_needleToTrackerNode = self.initializeLinearTransformNode(trackingFileBaseName + "-NeedleToTracker")
     self.trackingData_cauteryToTrackerNode = self.initializeLinearTransformNode(trackingFileBaseName + "-CauteryToTracker")
-    self.probeToTrackerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-ProbeToTracker")
-    self.imageToTransducerNode = self.initializeLinearTransformNode(recordingFileBaseName + "-ImageToTransducer")
-    self.imageNode = getNode(recordingFileBaseName + "-Image")
     self.trackerToReferenceNode = self.trackingData_trackerToReferenceNode
     self.cauteryToTrackerNode = self.trackingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.trackingData_needleToTrackerNode
@@ -201,6 +248,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.needleToTrackerNode = self.recordingData_needleToTrackerNode
     self.updateModelVisibility(inTrackingMode=False)
     self.setupTransformHierarchy()
+    slicer.modules.sequencebrowser.setToolBarActiveBrowserNode(self.recordingData_browserNode)
 
   def changeToTrackingData(self):
     self.trackerToReferenceNode = self.trackingData_trackerToReferenceNode
@@ -208,6 +256,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.needleToTrackerNode = self.trackingData_needleToTrackerNode
     self.updateModelVisibility(inTrackingMode=True)
     self.setupTransformHierarchy()
+    slicer.modules.sequencebrowser.setToolBarActiveBrowserNode(self.trackingData_browserNode)
 
   def updateModelVisibility(self, inTrackingMode=True):
     inRecordingMode = not inTrackingMode
@@ -216,15 +265,6 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
 
   def setupTransformHierarchy(self):
     logging.debug("setting up transform hierarchy")
-
-    # reset all sequence nodes to the top of the transform hierarchy,
-    # only those in the changeToXXXData will be used
-    self.recordingData_trackerToReferenceNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
-    self.recordingData_needleToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
-    self.recordingData_cauteryToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
-    #self.trackingData_trackerToReferenceNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
-    #self.trackingData_needleToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
-    #self.trackingData_cauteryToTrackerNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
 
     self.trackerToReferenceNode.SetAndObserveTransformNodeID(self.referenceToRasNode.GetID())
     self.cauteryToTrackerNode.SetAndObserveTransformNodeID(self.trackerToReferenceNode.GetID())
@@ -243,63 +283,20 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.imageToTransducerNode.SetAndObserveTransformNodeID(self.transducerToProbeNode.GetID())
     if self.imageNode:
       self.imageNode.SetAndObserveTransformNodeID(self.imageToTransducerNode.GetID())
+      
+  def setupResliceDriver(self):
+    sliceNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSliceNode")
+    imageNode = self.imageNode
+    slicer.modules.volumereslicedriver.logic().SetDriverForSlice(imageNode.GetID(),sliceNode)
 
-  def copyPolyDataFromSourceToTargetModelNode(self, sourceNode, targetNode):
-    if not sourceNode:
-      logging.error("No source node. Aborting.")
-      return
-    if not targetNode:
-      logging.error("No target node. Aborting.")
-      return
-    copiedModelPolyData = vtk.vtkPolyData()
-    copiedModelPolyData.DeepCopy(sourceNode.GetPolyData())
-    targetNode.SetAndObservePolyData(copiedModelPolyData)
-    
-  def loadLinearTransformNode(self, directory, name):
-    node = slicer.util.getNode(name + "*")
-    if node:
-      slicer.mrmlScene.RemoveNode(node) # reload, don't re-use
-    slicer.util.loadTransform(directory + name + ".h5")
-    #slicer.app.coreIOManager().loadNodes('LinearTransform',{'fileName':directory+name+".h5"})
-    node = slicer.util.getNode(name + "*")
-    if not node:
-      node = self.initializeLinearTransformNode(name)
-    return node
-
-  def loadMarkupsNode(self, directory, name):
-    node = slicer.util.getNode(name + '*')
-    if node:
-      slicer.mrmlScene.RemoveNode(node) # reload, don't re-use
-    slicer.util.loadMarkupsFiducialList(directory + name + ".fcsv")
-    #slicer.app.coreIOManager().loadNodes('MarkupsFiducials',{'fileName':self.lumpNavDirectory+name+".fcsv"})
-    node = slicer.util.getNode(name + "*")
-    if not node:
-      node = self.initializeMarkupsNode(name)
-    return node
-  
   def initializeLinearTransformNode(self,name):
     logging.debug('initializeLinearTransformNode')
-    transformNode = slicer.util.getNode(name)
+    transformNode = slicer.mrmlScene.GetFirstNodeByName(name)
     if not transformNode:
       transformNode=slicer.vtkMRMLLinearTransformNode()
       transformNode.SetName(name)
       slicer.mrmlScene.AddNode(transformNode)
     return transformNode
-
-  def initializeMarkupsNode(self,name):
-    logging.debug('initializeMarkupsNode')
-    markupsNode = slicer.util.getNode(name)
-    if not markupsNode:
-      markupsNode=slicer.vtkMRMLMarkupsFiducialNode()
-      markupsNode.SetName(name)
-      slicer.mrmlScene.AddNode(markupsNode)
-    return markupsNode
-    
-  def removeExistingNodes(self,baseName):
-    node = slicer.util.getNode(baseName)
-    while node:
-      slicer.mrmlScene.RemoveNode(node)
-      node = slicer.util.getNode(baseName)
 
 class LumpNavReplayTest(ScriptedLoadableModuleTest):
   """

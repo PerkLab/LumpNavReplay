@@ -7,6 +7,7 @@ import numpy, math
 from slicer.util import getNode, getNodes
 from slicer import modules, app
 import time
+import Viewpoint
 
 class LumpNavReplay(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
@@ -213,6 +214,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.tumorModelNode_Needle = slicer.mrmlScene.GetFirstNodeByName("TumorModel")
     self.cauteryModelNode_CauteryModel = slicer.mrmlScene.GetFirstNodeByName("CauteryModel")
     self.needleModelNode_NeedleModel = slicer.mrmlScene.GetFirstNodeByName("NeedleModel")
+    self.setupAutocenter()
 
   def loadRecordingSequences(self, recordingFile):
     logging.debug("loading \'recording\' sequences")
@@ -283,6 +285,45 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.imageToTransducerNode.SetAndObserveTransformNodeID(self.transducerToProbeNode.GetID())
     if self.imageNode:
       self.imageNode.SetAndObserveTransformNodeID(self.imageToTransducerNode.GetID())
+  
+  # Setting autocenter parameters to match LumpNav
+  def setupAutocenter(self):
+    viewpointLogic = Viewpoint.ViewpointLogic()
+
+    leftView = slicer.mrmlScene.GetNodeByID('vtkMRMLViewNode1')
+    rightView = slicer.mrmlScene.GetNodeByID('vtkMRMLViewNode2')
+    bottomView = slicer.mrmlScene.GetNodeByID('vtkMRMLViewNode3')
+    heightViewCoordLimits = 0.6;
+    widthViewCoordLimits = 0.9;
+
+    leftViewNodeViewpoint = viewpointLogic.getViewpointForViewNode(leftView)
+    leftViewNodeViewpoint.setViewNode(leftView)
+    leftViewNodeViewpoint.autoCenterSetSafeXMinimum(-widthViewCoordLimits)
+    leftViewNodeViewpoint.autoCenterSetSafeXMaximum(widthViewCoordLimits)
+    leftViewNodeViewpoint.autoCenterSetSafeYMinimum(-heightViewCoordLimits)
+    leftViewNodeViewpoint.autoCenterSetSafeYMaximum(heightViewCoordLimits)
+    leftViewNodeViewpoint.autoCenterSetModelNode(self.tumorModelNode_Needle)
+    leftViewNodeViewpoint.autoCenterStart()
+
+    rightViewNodeViewpoint = viewpointLogic.getViewpointForViewNode(rightView)
+    rightViewNodeViewpoint.setViewNode(rightView)
+    rightViewNodeViewpoint.autoCenterSetSafeXMinimum(-widthViewCoordLimits)
+    rightViewNodeViewpoint.autoCenterSetSafeXMaximum(widthViewCoordLimits)
+    rightViewNodeViewpoint.autoCenterSetSafeYMinimum(-heightViewCoordLimits)
+    rightViewNodeViewpoint.autoCenterSetSafeYMaximum(heightViewCoordLimits)
+    rightViewNodeViewpoint.autoCenterSetModelNode(self.tumorModelNode_Needle)
+    rightViewNodeViewpoint.autoCenterStart()
+
+    # Earlier surgeries did not use Triple 3D view
+    if bottomView :
+      bottomViewNodeViewpoint = viewpointLogic.getViewpointForViewNode(bottomView)
+      bottomViewNodeViewpoint.setViewNode(bottomView)
+      bottomViewNodeViewpoint.autoCenterSetSafeXMinimum(-widthViewCoordLimits)
+      bottomViewNodeViewpoint.autoCenterSetSafeXMaximum(widthViewCoordLimits)
+      bottomViewNodeViewpoint.autoCenterSetSafeYMinimum(-heightViewCoordLimits)
+      bottomViewNodeViewpoint.autoCenterSetSafeYMaximum(heightViewCoordLimits)
+      bottomViewNodeViewpoint.autoCenterSetModelNode(self.tumorModelNode_Needle)
+      bottomViewNodeViewpoint.autoCenterStart()
       
   def setupResliceDriver(self):
     sliceNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSliceNode")

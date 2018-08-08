@@ -231,6 +231,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.cauteryToTrackerNode = self.recordingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.recordingData_needleToTrackerNode
     self.setupResliceDriver()
+    self.assignSlicerVariables()
 
   def loadTrackingSequences(self, trackingFile):
     logging.debug("loading \'tracking\' sequences")
@@ -243,6 +244,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.trackerToReferenceNode = self.trackingData_trackerToReferenceNode
     self.cauteryToTrackerNode = self.trackingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.trackingData_needleToTrackerNode
+    self.assignSlicerVariables()
 
   def changeToRecordingData(self):
     self.trackerToReferenceNode = self.recordingData_trackerToReferenceNode
@@ -285,6 +287,27 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.imageToTransducerNode.SetAndObserveTransformNodeID(self.transducerToProbeNode.GetID())
     if self.imageNode:
       self.imageNode.SetAndObserveTransformNodeID(self.imageToTransducerNode.GetID())
+  
+  def assignSlicerVariables(self):
+    class empty:
+      pass
+    slicer.lumpnavreplay = empty()
+    slicer.lumpnavreplay.referenceToRasNode = self.referenceToRasNode
+    slicer.lumpnavreplay.trackerToReferenceNode = self.trackerToReferenceNode
+    slicer.lumpnavreplay.cauteryToTrackerNode = self.cauteryToTrackerNode
+    slicer.lumpnavreplay.cauteryTipToCauteryNode = self.cauteryTipToCauteryNode
+    slicer.lumpnavreplay.cauteryModelToCauteryTipNode = self.cauteryModelToCauteryTipNode
+    slicer.lumpnavreplay.cauteryModelNode_CauteryModel = self.cauteryModelNode_CauteryModel
+    slicer.lumpnavreplay.needleToTrackerNode = self.needleToTrackerNode
+    slicer.lumpnavreplay.needleTipToNeedleNode = self.needleTipToNeedleNode
+    slicer.lumpnavreplay.needleModelToNeedleTip = self.needleModelToNeedleTip
+    slicer.lumpnavreplay.needleModelNode_NeedleModel = self.needleModelNode_NeedleModel
+    slicer.lumpnavreplay.tumorModelNode_Needle = self.tumorModelNode_Needle
+    slicer.lumpnavreplay.probeToTrackerNode = self.probeToTrackerNode
+    slicer.lumpnavreplay.transducerToProbeNode = self.transducerToProbeNode
+    slicer.lumpnavreplay.imageToTransducerNode = self.imageToTransducerNode
+    if self.imageNode:
+      slicer.lumpnavreplay.imageNode = self.imageNode
   
   # Setting autocenter parameters to match LumpNav
   def setupAutocenter(self):

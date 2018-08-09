@@ -231,7 +231,6 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.cauteryToTrackerNode = self.recordingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.recordingData_needleToTrackerNode
     self.setupResliceDriver()
-    self.assignSlicerVariables()
 
   def loadTrackingSequences(self, trackingFile):
     logging.debug("loading \'tracking\' sequences")
@@ -244,7 +243,6 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.trackerToReferenceNode = self.trackingData_trackerToReferenceNode
     self.cauteryToTrackerNode = self.trackingData_cauteryToTrackerNode
     self.needleToTrackerNode = self.trackingData_needleToTrackerNode
-    self.assignSlicerVariables()
 
   def changeToRecordingData(self):
     self.trackerToReferenceNode = self.recordingData_trackerToReferenceNode
@@ -253,6 +251,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.updateModelVisibility(inTrackingMode=False)
     self.setupTransformHierarchy()
     slicer.modules.sequencebrowser.setToolBarActiveBrowserNode(self.recordingData_browserNode)
+    self.assignSlicerVariables()
 
   def changeToTrackingData(self):
     self.trackerToReferenceNode = self.trackingData_trackerToReferenceNode
@@ -261,6 +260,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.updateModelVisibility(inTrackingMode=True)
     self.setupTransformHierarchy()
     slicer.modules.sequencebrowser.setToolBarActiveBrowserNode(self.trackingData_browserNode)
+    self.assignSlicerVariables()
 
   def updateModelVisibility(self, inTrackingMode=True):
     inRecordingMode = not inTrackingMode

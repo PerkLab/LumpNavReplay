@@ -19,12 +19,9 @@ class LumpNavReplay(ScriptedLoadableModule):
     self.parent.title = "LumpNavReplay"
     self.parent.categories = ["IGT"]
     self.parent.dependencies = []
-    self.parent.contributors = ["Thomas Vaughan (Queen's University)"]
-    self.parent.helpText = """
-    This is a small module to allow automated evaluation of tumor tracking in lumpectomy.
-    """
-    self.parent.acknowledgementText = """
-    """
+    self.parent.contributors = ["Thomas Vaughan (Queen's University), Shaun Lund (Queen's University)"]
+    self.parent.helpText = """ """
+    self.parent.acknowledgementText = """ """
 
 #
 # LumpNavReplayWidget

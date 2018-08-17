@@ -15,19 +15,13 @@ class ViewCenterTesting(ScriptedLoadableModule):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "ViewCenterTesting" # TODO make this more human readable by adding spaces
-    self.parent.categories = ["Examples"]
+    self.parent.title = "ViewCenterTesting"
+    self.parent.categories = ["IGT"]
     self.parent.dependencies = []
-    self.parent.contributors = ["John Doe (AnyWare Corp.)"] # replace with "Firstname Lastname (Organization)"
-    self.parent.helpText = """
-This is an example of scripted loadable module bundled in an extension.
-It performs a simple thresholding on the input volume and optionally captures a screenshot.
-"""
+    self.parent.contributors = ["Thomas Vaughan (Queen's University)"]
+    self.parent.helpText = """ """
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
-    self.parent.acknowledgementText = """
-This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc.
-and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR013218-12S1.
-""" # replace with organization, grant and thanks.
+    self.parent.acknowledgementText = """ """
 
 #
 # ViewCenterTestingWidget
@@ -41,97 +35,214 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
 
-    # Instantiate and connect widgets ...
-
-    #
-    # Parameters Area
-    #
     parametersCollapsibleButton = ctk.ctkCollapsibleButton()
     parametersCollapsibleButton.text = "Parameters"
     self.layout.addWidget(parametersCollapsibleButton)
 
-    # Layout within the dummy collapsible button
     parametersFormLayout = qt.QFormLayout(parametersCollapsibleButton)
 
-    #
-    # input volume selector
-    #
-    self.inputSelector = slicer.qMRMLNodeComboBox()
-    self.inputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.inputSelector.selectNodeUponCreation = True
-    self.inputSelector.addEnabled = False
-    self.inputSelector.removeEnabled = False
-    self.inputSelector.noneEnabled = False
-    self.inputSelector.showHidden = False
-    self.inputSelector.showChildNodeTypes = False
-    self.inputSelector.setMRMLScene( slicer.mrmlScene )
-    self.inputSelector.setToolTip( "Pick the input to the algorithm." )
-    parametersFormLayout.addRow("Input Volume: ", self.inputSelector)
+    self.lumpNavDataComboBox = slicer.qMRMLNodeComboBox()
+    self.lumpNavDataComboBox.nodeTypes = ["vtkMRMLSequenceBrowserNode"]
+    self.lumpNavDataComboBox.selectNodeUponCreation = True
+    self.lumpNavDataComboBox.addEnabled = False
+    self.lumpNavDataComboBox.removeEnabled = False
+    self.lumpNavDataComboBox.noneEnabled = True
+    self.lumpNavDataComboBox.showHidden = False
+    self.lumpNavDataComboBox.showChildNodeTypes = False
+    self.lumpNavDataComboBox.setMRMLScene( slicer.mrmlScene )
+    self.lumpNavDataComboBox.setToolTip( "Which sequences are the lumpnav data in" )
+    parametersFormLayout.addRow("LumpNav Sequences: ", self.lumpNavDataComboBox)
+    self.lumpNavDataComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
-    #
-    # output volume selector
-    #
-    self.outputSelector = slicer.qMRMLNodeComboBox()
-    self.outputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.outputSelector.selectNodeUponCreation = True
-    self.outputSelector.addEnabled = True
-    self.outputSelector.removeEnabled = True
-    self.outputSelector.noneEnabled = True
-    self.outputSelector.showHidden = False
-    self.outputSelector.showChildNodeTypes = False
-    self.outputSelector.setMRMLScene( slicer.mrmlScene )
-    self.outputSelector.setToolTip( "Pick the output to the algorithm." )
-    parametersFormLayout.addRow("Output Volume: ", self.outputSelector)
+    self.targetModelComboBox = slicer.qMRMLNodeComboBox()
+    self.targetModelComboBox.nodeTypes = ["vtkMRMLModelNode"]
+    self.targetModelComboBox.selectNodeUponCreation = True
+    self.targetModelComboBox.addEnabled = False
+    self.targetModelComboBox.removeEnabled = False
+    self.targetModelComboBox.noneEnabled = True
+    self.targetModelComboBox.showHidden = False
+    self.targetModelComboBox.showChildNodeTypes = False
+    self.targetModelComboBox.setMRMLScene( slicer.mrmlScene )
+    self.targetModelComboBox.setToolTip( "What is the target of the view." )
+    parametersFormLayout.addRow("Target Model: ", self.targetModelComboBox)
+    self.targetModelComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
-    #
-    # threshold value
-    #
-    self.imageThresholdSliderWidget = ctk.ctkSliderWidget()
-    self.imageThresholdSliderWidget.singleStep = 0.1
-    self.imageThresholdSliderWidget.minimum = -100
-    self.imageThresholdSliderWidget.maximum = 100
-    self.imageThresholdSliderWidget.value = 0.5
-    self.imageThresholdSliderWidget.setToolTip("Set threshold value for computing the output image. Voxels that have intensities lower than this value will set to zero.")
-    parametersFormLayout.addRow("Image threshold", self.imageThresholdSliderWidget)
+    self.screenCoordinatesTableComboBox = slicer.qMRMLNodeComboBox()
+    self.screenCoordinatesTableComboBox.nodeTypes = ["vtkMRMLTableNode"]
+    self.screenCoordinatesTableComboBox.selectNodeUponCreation = True
+    self.screenCoordinatesTableComboBox.addEnabled = True
+    self.screenCoordinatesTableComboBox.removeEnabled = False
+    self.screenCoordinatesTableComboBox.noneEnabled = True
+    self.screenCoordinatesTableComboBox.showHidden = False
+    self.screenCoordinatesTableComboBox.showChildNodeTypes = False
+    self.screenCoordinatesTableComboBox.setMRMLScene( slicer.mrmlScene )
+    self.screenCoordinatesTableComboBox.setToolTip( "Where store screen coordinates of target model." )
+    parametersFormLayout.addRow("Screen Coordinates Table: ", self.screenCoordinatesTableComboBox)
+    self.screenCoordinatesTableComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
-    #
-    # check box to trigger taking screen shots for later use in tutorials
-    #
-    self.enableScreenshotsFlagCheckBox = qt.QCheckBox()
-    self.enableScreenshotsFlagCheckBox.checked = 0
-    self.enableScreenshotsFlagCheckBox.setToolTip("If checked, take screen shots for tutorials. Use Save Data to write them to disk.")
-    parametersFormLayout.addRow("Enable Screenshots", self.enableScreenshotsFlagCheckBox)
+    self.leftCameraComboBox = slicer.qMRMLNodeComboBox()
+    self.leftCameraComboBox.nodeTypes = ["vtkMRMLCameraNode"]
+    self.leftCameraComboBox.selectNodeUponCreation = True
+    self.leftCameraComboBox.addEnabled = False
+    self.leftCameraComboBox.removeEnabled = False
+    self.leftCameraComboBox.noneEnabled = True
+    self.leftCameraComboBox.showHidden = False
+    self.leftCameraComboBox.showChildNodeTypes = False
+    self.leftCameraComboBox.setMRMLScene( slicer.mrmlScene )
+    self.leftCameraComboBox.setToolTip( "Left view in Slicer." )
+    parametersFormLayout.addRow("Left View: ", self.leftCameraComboBox)
+    self.leftCameraComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
-    #
-    # Apply Button
-    #
-    self.applyButton = qt.QPushButton("Apply")
-    self.applyButton.toolTip = "Run the algorithm."
-    self.applyButton.enabled = False
-    parametersFormLayout.addRow(self.applyButton)
+    self.leftViewLayout = qt.QHBoxLayout()
+    self.leftViewSaveLoadLabel = qt.QLabel("Left View Loading/Saving: ")
+    self.leftViewLayout.addWidget(self.leftViewSaveLoadLabel)
+    self.leftTransformComboBox = slicer.qMRMLNodeComboBox()
+    self.leftTransformComboBox.nodeTypes = ["vtkMRMLLinearTransformNode"]
+    self.leftTransformComboBox.selectNodeUponCreation = True
+    self.leftTransformComboBox.addEnabled = True
+    self.leftTransformComboBox.removeEnabled = False
+    self.leftTransformComboBox.noneEnabled = True
+    self.leftTransformComboBox.showHidden = False
+    self.leftTransformComboBox.showChildNodeTypes = False
+    self.leftTransformComboBox.setMRMLScene( slicer.mrmlScene )
+    self.leftTransformComboBox.setToolTip( "Transform for left view." )
+    self.leftViewLayout.addWidget(self.leftTransformComboBox)
+    self.leftTransformComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
+    self.leftViewSaveButton = qt.QPushButton("Save to")
+    self.leftViewLayout.addWidget(self.leftViewSaveButton)
+    self.leftViewSaveButton.connect('clicked()', self.onLeftViewSaveButtonPressed)
+    self.leftViewLoadButton = qt.QPushButton("Load from")
+    self.leftViewLayout.addWidget(self.leftViewLoadButton)
+    self.leftViewLoadButton.connect('clicked()', self.onLeftViewLoadButtonPressed)
+    parametersFormLayout.addRow(self.leftViewLayout)
 
-    # connections
-    self.applyButton.connect('clicked(bool)', self.onApplyButton)
-    self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
-    self.outputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.rightCameraComboBox = slicer.qMRMLNodeComboBox()
+    self.rightCameraComboBox.nodeTypes = ["vtkMRMLCameraNode"]
+    self.rightCameraComboBox.selectNodeUponCreation = True
+    self.rightCameraComboBox.addEnabled = False
+    self.rightCameraComboBox.removeEnabled = False
+    self.rightCameraComboBox.noneEnabled = True
+    self.rightCameraComboBox.showHidden = False
+    self.rightCameraComboBox.showChildNodeTypes = False
+    self.rightCameraComboBox.setMRMLScene( slicer.mrmlScene )
+    self.rightCameraComboBox.setToolTip( "Right view in Slicer." )
+    parametersFormLayout.addRow("Right View: ", self.rightCameraComboBox)
+    self.rightCameraComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
-    # Add vertical spacer
+    self.rightViewLayout = qt.QHBoxLayout()
+    self.rightViewSaveLoadLabel = qt.QLabel("Right View Loading/Saving: ")
+    self.rightViewLayout.addWidget(self.rightViewSaveLoadLabel)
+    self.rightTransformComboBox = slicer.qMRMLNodeComboBox()
+    self.rightTransformComboBox.nodeTypes = ["vtkMRMLLinearTransformNode"]
+    self.rightTransformComboBox.selectNodeUponCreation = True
+    self.rightTransformComboBox.addEnabled = True
+    self.rightTransformComboBox.removeEnabled = False
+    self.rightTransformComboBox.noneEnabled = True
+    self.rightTransformComboBox.showHidden = False
+    self.rightTransformComboBox.showChildNodeTypes = False
+    self.rightTransformComboBox.setMRMLScene( slicer.mrmlScene )
+    self.rightTransformComboBox.setToolTip( "Transform for right view." )
+    self.rightViewLayout.addWidget(self.rightTransformComboBox)
+    self.rightTransformComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
+    self.rightViewSaveButton = qt.QPushButton("Save to")
+    self.rightViewLayout.addWidget(self.rightViewSaveButton)
+    self.rightViewSaveButton.connect('clicked()', self.onRightViewSaveButtonPressed)
+    self.rightViewLoadButton = qt.QPushButton("Load from")
+    self.rightViewLayout.addWidget(self.rightViewLoadButton)
+    self.rightViewLoadButton.connect('clicked()', self.onRightViewLoadButtonPressed)
+    parametersFormLayout.addRow(self.rightViewLayout)
+
+    self.startIndexSpinBox = qt.QSpinBox()
+    parametersFormLayout.addRow("Start Index:", self.startIndexSpinBox)
+
+    self.endIndexSpinBox = qt.QSpinBox()
+    parametersFormLayout.addRow("End Index:", self.endIndexSpinBox)
+
+    self.goToStartButton = qt.QPushButton("Go to start")
+    parametersFormLayout.addRow(self.goToStartButton)
+    self.goToStartButton.connect('clicked()', self.onGoToStartButtonPressed)
+
+    self.beginReplayButton = qt.QPushButton("Replay")
+    parametersFormLayout.addRow(self.beginReplayButton)
+    self.beginReplayButton.connect('clicked()', self.onBeginReplayButtonPressed)
+
     self.layout.addStretch(1)
 
-    # Refresh Apply button state
-    self.onSelect()
+    self.onNodeChanged()
 
   def cleanup(self):
     pass
 
-  def onSelect(self):
-    self.applyButton.enabled = self.inputSelector.currentNode() and self.outputSelector.currentNode()
+  def onNodeChanged(self):
+    # Update buttons
+    leftViewAndTransformSelected = self.leftCameraComboBox.currentNode() and self.leftTransformComboBox.currentNode()
+    self.leftViewSaveButton.enabled = leftViewAndTransformSelected
+    self.leftViewLoadButton.enabled = leftViewAndTransformSelected
+    rightViewAndTransformSelected = self.rightCameraComboBox.currentNode() and self.rightTransformComboBox.currentNode()
+    self.rightViewSaveButton.enabled = rightViewAndTransformSelected
+    self.rightViewLoadButton.enabled = rightViewAndTransformSelected
+    self.goToStartButton.enabled = self.lumpNavDataComboBox.currentNode()
+    self.beginReplayButton.enabled = self.lumpNavDataComboBox.currentNode() and \
+                                     self.targetModelComboBox.currentNode() and \
+                                     self.screenCoordinatesTableComboBox.currentNode() and \
+                                     self.leftCameraComboBox.currentNode() and \
+                                     self.rightCameraComboBox.currentNode()
 
-  def onApplyButton(self):
+  def onLeftViewLoadButtonPressed(self):
     logic = ViewCenterTestingLogic()
-    enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
-    imageThreshold = self.imageThresholdSliderWidget.value
-    logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode(), imageThreshold, enableScreenshotsFlag)
+    transformNode = self.leftTransformComboBox.currentNode()
+    if not transformNode:
+      logging.error( "Cannot save or load view when transform node is null." )
+      return
+    cameraNode = self.leftCameraComboBox.currentNode()
+    if not cameraNode:
+      logging.error( "Cannot save or load view when camera node is null." )
+      return
+    modelNode = self.targetModelComboBox.currentNode()
+    logic.assignTransformDataToCameraNode( transformNode, cameraNode, modelNode )
+
+  def onRightViewLoadButtonPressed(self):
+    logic = ViewCenterTestingLogic()
+    transformNode = self.rightTransformComboBox.currentNode()
+    if not transformNode:
+      logging.error( "Cannot save or load view when transform node is null." )
+      return
+    cameraNode = self.rightCameraComboBox.currentNode()
+    if not cameraNode:
+      logging.error( "Cannot save or load view when camera node is null." )
+      return
+    modelNode = self.targetModelComboBox.currentNode()
+    logic.assignTransformDataToCameraNode( transformNode, cameraNode, modelNode )
+
+  def onLeftViewSaveButtonPressed(self):
+    logic = ViewCenterTestingLogic()
+    cameraNode = self.leftCameraComboBox.currentNode()
+    if not cameraNode:
+      logging.error( "Cannot save or load view when camera node is null." )
+      return
+    transformNode = self.leftTransformComboBox.currentNode()
+    if not transformNode:
+      logging.error( "Cannot save or load view when transform node is null." )
+      return
+    logic.assignCameraDataToTransformNode( cameraNode, transformNode )
+
+  def onRightViewSaveButtonPressed(self):
+    logic = ViewCenterTestingLogic()
+    cameraNode = self.rightCameraComboBox.currentNode()
+    if not cameraNode:
+      logging.error( "Cannot save or load view when camera node is null." )
+      return
+    transformNode = self.rightTransformComboBox.currentNode()
+    if not transformNode:
+      logging.error( "Cannot save or load view when transform node is null." )
+      return
+    logic.assignCameraDataToTransformNode( cameraNode, transformNode )
+
+  def onGoToStartButtonPressed(self):
+    pass
+
+  def onBeginReplayButtonPressed(self):
+    pass
 
 #
 # ViewCenterTestingLogic
@@ -147,91 +258,59 @@ class ViewCenterTestingLogic(ScriptedLoadableModuleLogic):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
-  def hasImageData(self,volumeNode):
-    """This is an example logic method that
-    returns true if the passed in volume
-    node has valid image data
-    """
-    if not volumeNode:
-      logging.debug('hasImageData failed: no volume node')
-      return False
-    if volumeNode.GetImageData() is None:
-      logging.debug('hasImageData failed: no image data in volume node')
-      return False
-    return True
+  def assignTransformDataToCameraNode(self, viewToRasTransformNode, cameraNode, modelNode):
+    viewToRasTransform = vtk.vtkGeneralTransform()
+    viewToRasTransform = viewToRasTransformNode.GetTransformToParent()
+    originView = [ 0, 0, 0 ]
+    originRas = viewToRasTransform.TransformPoint( originView )
+    cameraNode.SetPosition( originRas )
+    upDirectionView = [ 0, 1, 0 ]
+    upDirectionRas = [ 0, 0, 0 ]
+    viewToRasTransform.TransformVectorAtPoint( originView, upDirectionView, upDirectionRas )
+    cameraNode.SetViewUp( upDirectionRas )
+    focalPointView = [ 0, 0, -100 ] # default, but changes if modelNode is provided
+    if modelNode:
+      modelParentNode = modelNode.GetParentTransformNode()
+      modelToViewTransform = vtk.vtkGeneralTransform()
+      slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(modelParentNode, viewToRasTransformNode, modelToViewTransform)
+      modelBounds = [0,0,0,0,0,0]
+      modelNode.GetBounds(modelBounds)
+      modelCenterX = (modelBounds[0] + modelBounds[1]) / 2
+      modelCenterY = (modelBounds[2] + modelBounds[3]) / 2
+      modelCenterZ = (modelBounds[4] + modelBounds[5]) / 2
+      modelPosition = [modelCenterX, modelCenterY, modelCenterZ]
+      modelPositionView = modelToViewTransform.TransformPoint( modelPosition )
+      focalPointView = [ 0, 0, modelPositionView[2] ]
+    focalPointRas = viewToRasTransform.TransformPoint( focalPointView )
+    cameraNode.SetFocalPoint( focalPointRas )
+    cameraNode.ResetClippingRange()
 
-  def isValidInputOutputData(self, inputVolumeNode, outputVolumeNode):
-    """Validates if the output is not the same as input
-    """
-    if not inputVolumeNode:
-      logging.debug('isValidInputOutputData failed: no input volume node defined')
-      return False
-    if not outputVolumeNode:
-      logging.debug('isValidInputOutputData failed: no output volume node defined')
-      return False
-    if inputVolumeNode.GetID()==outputVolumeNode.GetID():
-      logging.debug('isValidInputOutputData failed: input and output volume is the same. Create a new volume for output to avoid this error.')
-      return False
-    return True
-
-  def takeScreenshot(self,name,description,type=-1):
-    # show the message even if not taking a screen shot
-    slicer.util.delayDisplay('Take screenshot: '+description+'.\nResult is available in the Annotations module.', 3000)
-
-    lm = slicer.app.layoutManager()
-    # switch on the type to get the requested window
-    widget = 0
-    if type == slicer.qMRMLScreenShotDialog.FullLayout:
-      # full layout
-      widget = lm.viewport()
-    elif type == slicer.qMRMLScreenShotDialog.ThreeD:
-      # just the 3D window
-      widget = lm.threeDWidget(0).threeDView()
-    elif type == slicer.qMRMLScreenShotDialog.Red:
-      # red slice window
-      widget = lm.sliceWidget("Red")
-    elif type == slicer.qMRMLScreenShotDialog.Yellow:
-      # yellow slice window
-      widget = lm.sliceWidget("Yellow")
-    elif type == slicer.qMRMLScreenShotDialog.Green:
-      # green slice window
-      widget = lm.sliceWidget("Green")
-    else:
-      # default to using the full window
-      widget = slicer.util.mainWindow()
-      # reset the type so that the node is set correctly
-      type = slicer.qMRMLScreenShotDialog.FullLayout
-
-    # grab and convert to vtk image data
-    qimage = ctk.ctkWidgetsUtils.grabWidget(widget)
-    imageData = vtk.vtkImageData()
-    slicer.qMRMLUtils().qImageToVtkImageData(qimage,imageData)
-
-    annotationLogic = slicer.modules.annotations.logic()
-    annotationLogic.CreateSnapShot(name, description, type, 1, imageData)
-
-  def run(self, inputVolume, outputVolume, imageThreshold, enableScreenshots=0):
-    """
-    Run the actual algorithm
-    """
-
-    if not self.isValidInputOutputData(inputVolume, outputVolume):
-      slicer.util.errorDisplay('Input volume is the same as output volume. Choose a different output volume.')
-      return False
-
-    logging.info('Processing started')
-
-    # Compute the thresholded output volume using the Threshold Scalar Volume CLI module
-    cliParams = {'InputVolume': inputVolume.GetID(), 'OutputVolume': outputVolume.GetID(), 'ThresholdValue' : imageThreshold, 'ThresholdType' : 'Above'}
-    cliNode = slicer.cli.run(slicer.modules.thresholdscalarvolume, None, cliParams, wait_for_completion=True)
-
-    # Capture screenshot
-    if enableScreenshots:
-      self.takeScreenshot('ViewCenterTestingTest-Start','MyScreenshot',-1)
-
-    logging.info('Processing completed')
-
-    return True
+  def assignCameraDataToTransformNode(self, cameraNode, viewToRasTransformNode):
+    viewToRasMatrix = vtk.vtkMatrix4x4()
+    originRas = [ 0, 0, 0 ]
+    cameraNode.GetPosition( originRas )
+    viewToRasMatrix.SetElement( 0, 3, originRas[0] )
+    viewToRasMatrix.SetElement( 1, 3, originRas[1] )
+    viewToRasMatrix.SetElement( 2, 3, originRas[2] )
+    focalPointRas = [ 0, 0, 0 ]
+    cameraNode.GetFocalPoint( focalPointRas )
+    screenDirectionRas = [ 0, 0, 0 ]
+    vtk.vtkMath.Subtract( originRas, focalPointRas, screenDirectionRas )
+    vtk.vtkMath.Normalize( screenDirectionRas )
+    viewToRasMatrix.SetElement( 0, 2, screenDirectionRas[0] )
+    viewToRasMatrix.SetElement( 1, 2, screenDirectionRas[1] )
+    viewToRasMatrix.SetElement( 2, 2, screenDirectionRas[2] )
+    upDirectionRas = [ 0, 0, 0 ]
+    cameraNode.GetViewUp( upDirectionRas )
+    viewToRasMatrix.SetElement( 0, 1, upDirectionRas[0] )
+    viewToRasMatrix.SetElement( 1, 1, upDirectionRas[1] )
+    viewToRasMatrix.SetElement( 2, 1, upDirectionRas[2] )
+    rightDirectionRas = [ 0, 0, 0 ] # temporary values
+    vtk.vtkMath.Cross( upDirectionRas, screenDirectionRas, rightDirectionRas )
+    viewToRasMatrix.SetElement( 0, 0, rightDirectionRas[0] )
+    viewToRasMatrix.SetElement( 1, 0, rightDirectionRas[1] )
+    viewToRasMatrix.SetElement( 2, 0, rightDirectionRas[2] )
+    viewToRasTransformNode.SetMatrixTransformToParent( viewToRasMatrix )
 
 
 class ViewCenterTestingTest(ScriptedLoadableModuleTest):

@@ -97,6 +97,11 @@ class LumpNavReplayWidget(ScriptedLoadableModuleWidget):
     self.trackingFileLayout.addWidget(self.trackingFileSelectButton)
     self.trackingFileSelectButton.connect('clicked()', self.onTrackingFileSelectButtonPressed)
     parametersFormLayout.addRow(self.trackingFileLayout)
+
+    self.autoCenterCheckbox = qt.QCheckBox()
+    self.autoCenterCheckbox.setToolTip("Automatically center the view.")
+    self.autoCenterCheckbox.setChecked(True)
+    parametersFormLayout.addRow("Auto-center: ", self.autoCenterCheckbox)
     
     self.loadAllDataButton = qt.QPushButton("Load All Data")
     self.loadAllDataButton.setToolTip("Load the pertinent data for evaluating tumor tracking.")
@@ -164,7 +169,8 @@ class LumpNavReplayWidget(ScriptedLoadableModuleWidget):
     self.logic.loadAllData(self.transducerToProbeFileLineEdit.text, \
                            self.sceneFileLineEdit.text, \
                            self.recordingFileLineEdit.text, \
-                           self.trackingFileLineEdit.text)
+                           self.trackingFileLineEdit.text, \
+                           self.autoCenterCheckbox.checked)
     self.currentDataset = self.currentDatasetRecordingString
     self.switchDataButton.setEnabled(True)
 
@@ -191,17 +197,24 @@ class LumpNavReplayWidget(ScriptedLoadableModuleWidget):
 #
 
 class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
+
+  viewPointLogic = None
     
-  def loadAllData(self, transducerToProbeFile, sceneFile, recordingFile, trackingFile): #,trackingFile
+  def loadAllData(self, transducerToProbeFile, sceneFile, recordingFile, trackingFile, autocenter):
     slicer.mrmlScene.Clear(False)
     slicer.util.loadTransform(transducerToProbeFile)
     self.loadScene(sceneFile)
     self.loadRecordingSequences(recordingFile)
     self.loadTrackingSequences(trackingFile)
     self.changeToRecordingData()
+
+    if autocenter:
+      if not self.viewPointLogic:
+        self.viewpointLogic = Viewpoint.ViewpointLogic()
+      self.startAutocenter()
     
   def loadScene(self, fileName):
-    slicer.util.loadScene(fileName);
+    slicer.util.loadScene(fileName)
     self.referenceToRasNode = slicer.mrmlScene.GetFirstNodeByName("ReferenceToRas")
     self.cauteryTipToCauteryNode = slicer.mrmlScene.GetFirstNodeByName("CauteryTipToCautery")
     self.cauteryModelToCauteryTipNode = slicer.mrmlScene.GetFirstNodeByName("CauteryModelToCauteryTip")
@@ -211,7 +224,6 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     self.tumorModelNode_Needle = slicer.mrmlScene.GetFirstNodeByName("TumorModel")
     self.cauteryModelNode_CauteryModel = slicer.mrmlScene.GetFirstNodeByName("CauteryModel")
     self.needleModelNode_NeedleModel = slicer.mrmlScene.GetFirstNodeByName("NeedleModel")
-    self.setupAutocenter()
 
   def loadRecordingSequences(self, recordingFile):
     logging.debug("loading \'recording\' sequences")
@@ -307,16 +319,14 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
       slicer.lumpnavreplay.imageNode = self.imageNode
   
   # Setting autocenter parameters to match LumpNav
-  def setupAutocenter(self):
-    viewpointLogic = Viewpoint.ViewpointLogic()
-
+  def startAutocenter(self):
     leftView = slicer.mrmlScene.GetNodeByID('vtkMRMLViewNode1')
     rightView = slicer.mrmlScene.GetNodeByID('vtkMRMLViewNode2')
     bottomView = slicer.mrmlScene.GetNodeByID('vtkMRMLViewNode3')
-    heightViewCoordLimits = 0.6;
-    widthViewCoordLimits = 0.9;
+    heightViewCoordLimits = 0.6
+    widthViewCoordLimits = 0.9
 
-    leftViewNodeViewpoint = viewpointLogic.getViewpointForViewNode(leftView)
+    leftViewNodeViewpoint = self.viewpointLogic.getViewpointForViewNode(leftView)
     leftViewNodeViewpoint.setViewNode(leftView)
     leftViewNodeViewpoint.autoCenterSetSafeXMinimum(-widthViewCoordLimits)
     leftViewNodeViewpoint.autoCenterSetSafeXMaximum(widthViewCoordLimits)
@@ -325,7 +335,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
     leftViewNodeViewpoint.autoCenterSetModelNode(self.tumorModelNode_Needle)
     leftViewNodeViewpoint.autoCenterStart()
 
-    rightViewNodeViewpoint = viewpointLogic.getViewpointForViewNode(rightView)
+    rightViewNodeViewpoint = self.viewpointLogic.getViewpointForViewNode(rightView)
     rightViewNodeViewpoint.setViewNode(rightView)
     rightViewNodeViewpoint.autoCenterSetSafeXMinimum(-widthViewCoordLimits)
     rightViewNodeViewpoint.autoCenterSetSafeXMaximum(widthViewCoordLimits)
@@ -336,7 +346,7 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
 
     # Earlier surgeries did not use Triple 3D view
     if bottomView :
-      bottomViewNodeViewpoint = viewpointLogic.getViewpointForViewNode(bottomView)
+      bottomViewNodeViewpoint = self.viewpointLogic.getViewpointForViewNode(bottomView)
       bottomViewNodeViewpoint.setViewNode(bottomView)
       bottomViewNodeViewpoint.autoCenterSetSafeXMinimum(-widthViewCoordLimits)
       bottomViewNodeViewpoint.autoCenterSetSafeXMaximum(widthViewCoordLimits)
@@ -344,7 +354,21 @@ class LumpNavReplayLogic(ScriptedLoadableModuleLogic):
       bottomViewNodeViewpoint.autoCenterSetSafeYMaximum(heightViewCoordLimits)
       bottomViewNodeViewpoint.autoCenterSetModelNode(self.tumorModelNode_Needle)
       bottomViewNodeViewpoint.autoCenterStart()
-      
+
+  def stopAutocenter(self):
+    leftView = slicer.mrmlScene.GetNodeByID('vtkMRMLViewNode1')
+    leftViewNodeViewpoint = self.viewpointLogic.getViewpointForViewNode(leftView)
+    leftViewNodeViewpoint.autoCenterStop()
+
+    rightView = slicer.mrmlScene.GetNodeByID('vtkMRMLViewNode2')
+    rightViewNodeViewpoint = self.viewpointLogic.getViewpointForViewNode(rightView)
+    rightViewNodeViewpoint.autoCenterStop()
+
+    bottomView = slicer.mrmlScene.GetNodeByID('vtkMRMLViewNode3')
+    if bottomView:
+      bottomViewNodeViewpoint = self.viewpointLogic.getViewpointForViewNode(bottomView)
+      bottomViewNodeViewpoint.autoCenterStop()
+
   def setupResliceDriver(self):
     sliceNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSliceNode")
     imageNode = self.imageNode

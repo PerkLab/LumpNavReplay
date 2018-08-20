@@ -68,18 +68,19 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     parametersFormLayout.addRow("Target Model: ", self.targetModelComboBox)
     self.targetModelComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
-    self.screenCoordinatesTableComboBox = slicer.qMRMLNodeComboBox()
-    self.screenCoordinatesTableComboBox.nodeTypes = ["vtkMRMLTableNode"]
-    self.screenCoordinatesTableComboBox.selectNodeUponCreation = True
-    self.screenCoordinatesTableComboBox.addEnabled = True
-    self.screenCoordinatesTableComboBox.removeEnabled = False
-    self.screenCoordinatesTableComboBox.noneEnabled = True
-    self.screenCoordinatesTableComboBox.showHidden = False
-    self.screenCoordinatesTableComboBox.showChildNodeTypes = False
-    self.screenCoordinatesTableComboBox.setMRMLScene( slicer.mrmlScene )
-    self.screenCoordinatesTableComboBox.setToolTip( "Where store screen coordinates of target model." )
-    parametersFormLayout.addRow("Screen Coordinates Table: ", self.screenCoordinatesTableComboBox)
-    self.screenCoordinatesTableComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
+    self.startIndexSpinBox = qt.QSpinBox()
+    self.startIndexSpinBox.setMinimum(0)
+    self.startIndexSpinBox.setMaximum(10000)
+    parametersFormLayout.addRow("Start Index:", self.startIndexSpinBox)
+
+    self.endIndexSpinBox = qt.QSpinBox()
+    self.endIndexSpinBox.setMinimum(0)
+    self.endIndexSpinBox.setMaximum(10000)
+    parametersFormLayout.addRow("End Index:", self.endIndexSpinBox)
+
+    self.goToStartButton = qt.QPushButton("Go to start")
+    parametersFormLayout.addRow(self.goToStartButton)
+    self.goToStartButton.connect('clicked()', self.onGoToStartButtonPressed)
 
     self.leftViewComboBox = slicer.qMRMLNodeComboBox()
     self.leftViewComboBox.nodeTypes = ["vtkMRMLViewNode"]
@@ -153,19 +154,18 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     self.rightViewLoadButton.connect('clicked()', self.onRightViewLoadButtonPressed)
     parametersFormLayout.addRow(self.rightViewLayout)
 
-    self.startIndexSpinBox = qt.QSpinBox()
-    self.startIndexSpinBox.setMinimum(0)
-    self.startIndexSpinBox.setMaximum(10000)
-    parametersFormLayout.addRow("Start Index:", self.startIndexSpinBox)
-
-    self.endIndexSpinBox = qt.QSpinBox()
-    self.endIndexSpinBox.setMinimum(0)
-    self.endIndexSpinBox.setMaximum(10000)
-    parametersFormLayout.addRow("End Index:", self.endIndexSpinBox)
-
-    self.goToStartButton = qt.QPushButton("Go to start")
-    parametersFormLayout.addRow(self.goToStartButton)
-    self.goToStartButton.connect('clicked()', self.onGoToStartButtonPressed)
+    self.screenCoordinatesTableComboBox = slicer.qMRMLNodeComboBox()
+    self.screenCoordinatesTableComboBox.nodeTypes = ["vtkMRMLTableNode"]
+    self.screenCoordinatesTableComboBox.selectNodeUponCreation = True
+    self.screenCoordinatesTableComboBox.addEnabled = True
+    self.screenCoordinatesTableComboBox.removeEnabled = False
+    self.screenCoordinatesTableComboBox.noneEnabled = True
+    self.screenCoordinatesTableComboBox.showHidden = False
+    self.screenCoordinatesTableComboBox.showChildNodeTypes = False
+    self.screenCoordinatesTableComboBox.setMRMLScene( slicer.mrmlScene )
+    self.screenCoordinatesTableComboBox.setToolTip( "Where store screen coordinates of target model." )
+    parametersFormLayout.addRow("Screen Coordinates Table: ", self.screenCoordinatesTableComboBox)
+    self.screenCoordinatesTableComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
     self.beginReplayButton = qt.QPushButton("Replay")
     parametersFormLayout.addRow(self.beginReplayButton)
@@ -339,6 +339,8 @@ class ViewCenterTestingLogic(ScriptedLoadableModuleLogic):
     self.tableNode = tableNode
     self.tableColumnIndices = vtk.vtkIntArray()
     self.tableColumnIndices.SetName("Index")
+    self.tableColumnTime = vtk.vtkDoubleArray()
+    self.tableColumnTime.SetName("Time (s)")
     self.tableColumnLeftMinimumX = vtk.vtkDoubleArray()
     self.tableColumnLeftMinimumX.SetName("Left View Minimum X Extent")
     self.tableColumnLeftMaximumX = vtk.vtkDoubleArray()
@@ -366,6 +368,8 @@ class ViewCenterTestingLogic(ScriptedLoadableModuleLogic):
       self.timer.stop()
     currentIndex = self.sequenceBrowserNode.GetSelectedItemNumber()
     self.tableColumnIndices.InsertNextTuple1(currentIndex)
+    timeSeconds = float(self.sequenceBrowserNode.GetMasterSequenceNode().GetNthIndexValue(currentIndex))
+    self.tableColumnTime.InsertNextTuple1(timeSeconds)
     leftViewExtents = self.computeExtentsOfModelInViewport(self.leftViewNode,self.tumorModelNode)
     self.tableColumnLeftMinimumX.InsertNextTuple1(leftViewExtents[0])
     self.tableColumnLeftMaximumX.InsertNextTuple1(leftViewExtents[1])
@@ -385,6 +389,7 @@ class ViewCenterTestingLogic(ScriptedLoadableModuleLogic):
   def endReplay(self):
     self.tableNode.RemoveAllColumns()
     self.tableNode.AddColumn(self.tableColumnIndices)
+    self.tableNode.AddColumn(self.tableColumnTime)
     self.tableNode.AddColumn(self.tableColumnLeftMinimumX)
     self.tableNode.AddColumn(self.tableColumnLeftMaximumX)
     self.tableNode.AddColumn(self.tableColumnLeftMinimumY)

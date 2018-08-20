@@ -96,7 +96,7 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     self.leftViewComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
     self.leftViewLayout = qt.QHBoxLayout()
-    self.leftViewSaveLoadLabel = qt.QLabel("Left View Loading/Saving: ")
+    self.leftViewSaveLoadLabel = qt.QLabel("Save/Load: ")
     self.leftViewLayout.addWidget(self.leftViewSaveLoadLabel)
     self.leftTransformComboBox = slicer.qMRMLNodeComboBox()
     self.leftTransformComboBox.nodeTypes = ["vtkMRMLLinearTransformNode"]
@@ -132,7 +132,7 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     self.rightViewComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
     self.rightViewLayout = qt.QHBoxLayout()
-    self.rightViewSaveLoadLabel = qt.QLabel("Right View Loading/Saving: ")
+    self.rightViewSaveLoadLabel = qt.QLabel("Save/Load: ")
     self.rightViewLayout.addWidget(self.rightViewSaveLoadLabel)
     self.rightTransformComboBox = slicer.qMRMLNodeComboBox()
     self.rightTransformComboBox.nodeTypes = ["vtkMRMLLinearTransformNode"]

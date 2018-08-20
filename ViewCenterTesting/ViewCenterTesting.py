@@ -34,6 +34,7 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
+    self.logic = ViewCenterTestingLogic()
 
     parametersCollapsibleButton = ctk.ctkCollapsibleButton()
     parametersCollapsibleButton.text = "Parameters"
@@ -80,18 +81,18 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     parametersFormLayout.addRow("Screen Coordinates Table: ", self.screenCoordinatesTableComboBox)
     self.screenCoordinatesTableComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
-    self.leftCameraComboBox = slicer.qMRMLNodeComboBox()
-    self.leftCameraComboBox.nodeTypes = ["vtkMRMLCameraNode"]
-    self.leftCameraComboBox.selectNodeUponCreation = True
-    self.leftCameraComboBox.addEnabled = False
-    self.leftCameraComboBox.removeEnabled = False
-    self.leftCameraComboBox.noneEnabled = True
-    self.leftCameraComboBox.showHidden = False
-    self.leftCameraComboBox.showChildNodeTypes = False
-    self.leftCameraComboBox.setMRMLScene( slicer.mrmlScene )
-    self.leftCameraComboBox.setToolTip( "Left view in Slicer." )
-    parametersFormLayout.addRow("Left View: ", self.leftCameraComboBox)
-    self.leftCameraComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
+    self.leftViewComboBox = slicer.qMRMLNodeComboBox()
+    self.leftViewComboBox.nodeTypes = ["vtkMRMLViewNode"]
+    self.leftViewComboBox.selectNodeUponCreation = True
+    self.leftViewComboBox.addEnabled = False
+    self.leftViewComboBox.removeEnabled = False
+    self.leftViewComboBox.noneEnabled = True
+    self.leftViewComboBox.showHidden = False
+    self.leftViewComboBox.showChildNodeTypes = False
+    self.leftViewComboBox.setMRMLScene( slicer.mrmlScene )
+    self.leftViewComboBox.setToolTip( "Left view in Slicer." )
+    parametersFormLayout.addRow("Left View: ", self.leftViewComboBox)
+    self.leftViewComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
     self.leftViewLayout = qt.QHBoxLayout()
     self.leftViewSaveLoadLabel = qt.QLabel("Left View Loading/Saving: ")
@@ -116,18 +117,18 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     self.leftViewLoadButton.connect('clicked()', self.onLeftViewLoadButtonPressed)
     parametersFormLayout.addRow(self.leftViewLayout)
 
-    self.rightCameraComboBox = slicer.qMRMLNodeComboBox()
-    self.rightCameraComboBox.nodeTypes = ["vtkMRMLCameraNode"]
-    self.rightCameraComboBox.selectNodeUponCreation = True
-    self.rightCameraComboBox.addEnabled = False
-    self.rightCameraComboBox.removeEnabled = False
-    self.rightCameraComboBox.noneEnabled = True
-    self.rightCameraComboBox.showHidden = False
-    self.rightCameraComboBox.showChildNodeTypes = False
-    self.rightCameraComboBox.setMRMLScene( slicer.mrmlScene )
-    self.rightCameraComboBox.setToolTip( "Right view in Slicer." )
-    parametersFormLayout.addRow("Right View: ", self.rightCameraComboBox)
-    self.rightCameraComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
+    self.rightViewComboBox = slicer.qMRMLNodeComboBox()
+    self.rightViewComboBox.nodeTypes = ["vtkMRMLViewNode"]
+    self.rightViewComboBox.selectNodeUponCreation = True
+    self.rightViewComboBox.addEnabled = False
+    self.rightViewComboBox.removeEnabled = False
+    self.rightViewComboBox.noneEnabled = True
+    self.rightViewComboBox.showHidden = False
+    self.rightViewComboBox.showChildNodeTypes = False
+    self.rightViewComboBox.setMRMLScene( slicer.mrmlScene )
+    self.rightViewComboBox.setToolTip( "Right view in Slicer." )
+    parametersFormLayout.addRow("Right View: ", self.rightViewComboBox)
+    self.rightViewComboBox.connect("currentNodeChanged(vtkMRMLNode*)", self.onNodeChanged)
 
     self.rightViewLayout = qt.QHBoxLayout()
     self.rightViewSaveLoadLabel = qt.QLabel("Right View Loading/Saving: ")
@@ -153,9 +154,13 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     parametersFormLayout.addRow(self.rightViewLayout)
 
     self.startIndexSpinBox = qt.QSpinBox()
+    self.startIndexSpinBox.setMinimum(0)
+    self.startIndexSpinBox.setMaximum(10000)
     parametersFormLayout.addRow("Start Index:", self.startIndexSpinBox)
 
     self.endIndexSpinBox = qt.QSpinBox()
+    self.endIndexSpinBox.setMinimum(0)
+    self.endIndexSpinBox.setMaximum(10000)
     parametersFormLayout.addRow("End Index:", self.endIndexSpinBox)
 
     self.goToStartButton = qt.QPushButton("Go to start")
@@ -175,74 +180,78 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
 
   def onNodeChanged(self):
     # Update buttons
-    leftViewAndTransformSelected = self.leftCameraComboBox.currentNode() and self.leftTransformComboBox.currentNode()
+    leftViewAndTransformSelected = self.leftViewComboBox.currentNode() and self.leftTransformComboBox.currentNode()
     self.leftViewSaveButton.enabled = leftViewAndTransformSelected
     self.leftViewLoadButton.enabled = leftViewAndTransformSelected
-    rightViewAndTransformSelected = self.rightCameraComboBox.currentNode() and self.rightTransformComboBox.currentNode()
+    rightViewAndTransformSelected = self.rightViewComboBox.currentNode() and self.rightTransformComboBox.currentNode()
     self.rightViewSaveButton.enabled = rightViewAndTransformSelected
     self.rightViewLoadButton.enabled = rightViewAndTransformSelected
     self.goToStartButton.enabled = self.lumpNavDataComboBox.currentNode()
     self.beginReplayButton.enabled = self.lumpNavDataComboBox.currentNode() and \
                                      self.targetModelComboBox.currentNode() and \
                                      self.screenCoordinatesTableComboBox.currentNode() and \
-                                     self.leftCameraComboBox.currentNode() and \
-                                     self.rightCameraComboBox.currentNode()
+                                     self.leftViewComboBox.currentNode() and \
+                                     self.rightViewComboBox.currentNode()
 
   def onLeftViewLoadButtonPressed(self):
-    logic = ViewCenterTestingLogic()
     transformNode = self.leftTransformComboBox.currentNode()
     if not transformNode:
       logging.error( "Cannot save or load view when transform node is null." )
       return
-    cameraNode = self.leftCameraComboBox.currentNode()
-    if not cameraNode:
+    viewNode = self.leftViewComboBox.currentNode()
+    if not viewNode:
       logging.error( "Cannot save or load view when camera node is null." )
       return
     modelNode = self.targetModelComboBox.currentNode()
-    logic.assignTransformDataToCameraNode( transformNode, cameraNode, modelNode )
+    self.logic.assignTransformDataToCameraNode( transformNode, viewNode, modelNode )
 
   def onRightViewLoadButtonPressed(self):
-    logic = ViewCenterTestingLogic()
     transformNode = self.rightTransformComboBox.currentNode()
     if not transformNode:
       logging.error( "Cannot save or load view when transform node is null." )
       return
-    cameraNode = self.rightCameraComboBox.currentNode()
-    if not cameraNode:
+    viewNode = self.rightViewComboBox.currentNode()
+    if not viewNode:
       logging.error( "Cannot save or load view when camera node is null." )
       return
     modelNode = self.targetModelComboBox.currentNode()
-    logic.assignTransformDataToCameraNode( transformNode, cameraNode, modelNode )
+    self.logic.assignTransformDataToCameraNode( transformNode, viewNode, modelNode )
 
   def onLeftViewSaveButtonPressed(self):
-    logic = ViewCenterTestingLogic()
-    cameraNode = self.leftCameraComboBox.currentNode()
-    if not cameraNode:
+    viewNode = self.leftViewComboBox.currentNode()
+    if not viewNode:
       logging.error( "Cannot save or load view when camera node is null." )
       return
     transformNode = self.leftTransformComboBox.currentNode()
     if not transformNode:
       logging.error( "Cannot save or load view when transform node is null." )
       return
-    logic.assignCameraDataToTransformNode( cameraNode, transformNode )
+    self.logic.assignCameraDataToTransformNode( viewNode, transformNode )
 
   def onRightViewSaveButtonPressed(self):
-    logic = ViewCenterTestingLogic()
-    cameraNode = self.rightCameraComboBox.currentNode()
-    if not cameraNode:
+    viewNode = self.rightViewComboBox.currentNode()
+    if not viewNode:
       logging.error( "Cannot save or load view when camera node is null." )
       return
     transformNode = self.rightTransformComboBox.currentNode()
     if not transformNode:
       logging.error( "Cannot save or load view when transform node is null." )
       return
-    logic.assignCameraDataToTransformNode( cameraNode, transformNode )
+    self.logic.assignCameraDataToTransformNode( viewNode, transformNode )
 
   def onGoToStartButtonPressed(self):
-    pass
+    sequenceBrowserNode = self.lumpNavDataComboBox.currentNode()
+    startFrameIndex = self.startIndexSpinBox.value
+    self.logic.goToStart(sequenceBrowserNode,startFrameIndex)
 
   def onBeginReplayButtonPressed(self):
-    pass
+    sequenceBrowserNode = self.lumpNavDataComboBox.currentNode()
+    endFrameIndex = self.endIndexSpinBox.value
+    tumorModelNode = self.targetModelComboBox.currentNode()
+    leftViewNode = self.leftViewComboBox.currentNode()
+    rightViewNode = self.rightViewComboBox.currentNode()
+    tableNode = self.screenCoordinatesTableComboBox.currentNode()
+    self.logic.beginReplay(sequenceBrowserNode,endFrameIndex,tumorModelNode,leftViewNode,rightViewNode,tableNode)
 
 #
 # ViewCenterTestingLogic
@@ -258,7 +267,9 @@ class ViewCenterTestingLogic(ScriptedLoadableModuleLogic):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
-  def assignTransformDataToCameraNode(self, viewToRasTransformNode, cameraNode, modelNode):
+  def assignTransformDataToCameraNode(self, viewToRasTransformNode, viewNode, modelNode):
+    camerasLogic = slicer.modules.cameras.logic()
+    cameraNode = camerasLogic.GetViewActiveCameraNode(viewNode)
     viewToRasTransform = vtk.vtkGeneralTransform()
     viewToRasTransform = viewToRasTransformNode.GetTransformToParent()
     originView = [ 0, 0, 0 ]
@@ -283,9 +294,11 @@ class ViewCenterTestingLogic(ScriptedLoadableModuleLogic):
       focalPointView = [ 0, 0, modelPositionView[2] ]
     focalPointRas = viewToRasTransform.TransformPoint( focalPointView )
     cameraNode.SetFocalPoint( focalPointRas )
-    cameraNode.ResetClippingRange()
+    self.resetCameraClippingRange( viewNode )
 
-  def assignCameraDataToTransformNode(self, cameraNode, viewToRasTransformNode):
+  def assignCameraDataToTransformNode(self, viewNode, viewToRasTransformNode):
+    camerasLogic = slicer.modules.cameras.logic()
+    cameraNode = camerasLogic.GetViewActiveCameraNode(viewNode)
     viewToRasMatrix = vtk.vtkMatrix4x4()
     originRas = [ 0, 0, 0 ]
     cameraNode.GetPosition( originRas )
@@ -311,6 +324,142 @@ class ViewCenterTestingLogic(ScriptedLoadableModuleLogic):
     viewToRasMatrix.SetElement( 1, 0, rightDirectionRas[1] )
     viewToRasMatrix.SetElement( 2, 0, rightDirectionRas[2] )
     viewToRasTransformNode.SetMatrixTransformToParent( viewToRasMatrix )
+
+  def goToStart(self,sequenceBrowserNode,startFrameIndex):
+    sequenceBrowserNode.SetSelectedItemNumber(startFrameIndex)
+
+  def beginReplay(self,sequenceBrowserNode,endFrameIndex,tumorModelNode,leftViewNode,rightViewNode,tableNode):
+    self.endFrameIndex = endFrameIndex
+    self.sequenceBrowserNode = sequenceBrowserNode
+    self.sequenceBrowserNode.SetPlaybackRateFps(9.5)
+    self.sequenceBrowserNode.SetPlaybackActive(True)
+    self.leftViewNode = leftViewNode
+    self.rightViewNode = rightViewNode
+    self.tumorModelNode = tumorModelNode
+    self.tableNode = tableNode
+    self.tableColumnIndices = vtk.vtkIntArray()
+    self.tableColumnIndices.SetName("Index")
+    self.tableColumnLeftMinimumX = vtk.vtkDoubleArray()
+    self.tableColumnLeftMinimumX.SetName("Left View Minimum X Extent")
+    self.tableColumnLeftMaximumX = vtk.vtkDoubleArray()
+    self.tableColumnLeftMaximumX.SetName("Left View Maximum X Extent")
+    self.tableColumnLeftMinimumY = vtk.vtkDoubleArray()
+    self.tableColumnLeftMinimumY.SetName("Left View Minimum Y Extent")
+    self.tableColumnLeftMaximumY = vtk.vtkDoubleArray()
+    self.tableColumnLeftMaximumY.SetName("Left View Maximum Y Extent")
+    self.tableColumnRightMinimumX = vtk.vtkDoubleArray()
+    self.tableColumnRightMinimumX.SetName("Right View Minimum X Extent")
+    self.tableColumnRightMaximumX = vtk.vtkDoubleArray()
+    self.tableColumnRightMaximumX.SetName("Right View Maximum X Extent")
+    self.tableColumnRightMinimumY = vtk.vtkDoubleArray()
+    self.tableColumnRightMinimumY.SetName("Right View Minimum Y Extent")
+    self.tableColumnRightMaximumY = vtk.vtkDoubleArray()
+    self.tableColumnRightMaximumY.SetName("Right View Maximum Y Extent")
+    self.timer = qt.QTimer()
+    self.timer.setSingleShot(False)
+    self.timer.setInterval(100) # Once every 10th of a second
+    self.timer.connect('timeout()', self.onTimeout)
+    self.timer.start()
+
+  def onTimeout(self):
+    if self.timer.isActive():
+      self.timer.stop()
+    currentIndex = self.sequenceBrowserNode.GetSelectedItemNumber()
+    self.tableColumnIndices.InsertNextTuple1(currentIndex)
+    leftViewExtents = self.computeExtentsOfModelInViewport(self.leftViewNode,self.tumorModelNode)
+    self.tableColumnLeftMinimumX.InsertNextTuple1(leftViewExtents[0])
+    self.tableColumnLeftMaximumX.InsertNextTuple1(leftViewExtents[1])
+    self.tableColumnLeftMinimumY.InsertNextTuple1(leftViewExtents[2])
+    self.tableColumnLeftMaximumY.InsertNextTuple1(leftViewExtents[3])
+    rightViewExtents = self.computeExtentsOfModelInViewport(self.rightViewNode,self.tumorModelNode)
+    self.tableColumnRightMinimumX.InsertNextTuple1(rightViewExtents[0])
+    self.tableColumnRightMaximumX.InsertNextTuple1(rightViewExtents[1])
+    self.tableColumnRightMinimumY.InsertNextTuple1(rightViewExtents[2])
+    self.tableColumnRightMaximumY.InsertNextTuple1(rightViewExtents[3])
+    if (currentIndex >= self.endFrameIndex):
+      self.sequenceBrowserNode.SetPlaybackActive(False)
+      self.endReplay()
+    else:
+      self.timer.start()
+
+  def endReplay(self):
+    self.tableNode.RemoveAllColumns()
+    self.tableNode.AddColumn(self.tableColumnIndices)
+    self.tableNode.AddColumn(self.tableColumnLeftMinimumX)
+    self.tableNode.AddColumn(self.tableColumnLeftMaximumX)
+    self.tableNode.AddColumn(self.tableColumnLeftMinimumY)
+    self.tableNode.AddColumn(self.tableColumnLeftMaximumY)
+    self.tableNode.AddColumn(self.tableColumnRightMinimumX)
+    self.tableNode.AddColumn(self.tableColumnRightMaximumX)
+    self.tableNode.AddColumn(self.tableColumnRightMinimumY)
+    self.tableNode.AddColumn(self.tableColumnRightMaximumY)
+
+  def computeExtentsOfModelInViewport(self, viewNode, modelNode):
+    modelToRasTransform = vtk.vtkGeneralTransform()
+    modelToRasTransformNode = modelNode.GetParentTransformNode()
+    modelToRasTransformNode.GetTransformToWorld(modelToRasTransform)
+    transformFilter = vtk.vtkTransformFilter()
+    transformFilter.SetTransform(modelToRasTransform)
+    transformFilter.SetInputData(modelNode.GetPolyData())
+    transformFilter.Update()
+    pointsRas = transformFilter.GetOutput().GetPoints()
+    numberOfPoints = pointsRas.GetNumberOfPoints()
+    minimumXViewport = float('inf')
+    maximumXViewport = float('-inf')
+    minimumYViewport = float('inf')
+    maximumYViewport = float('-inf')
+    minimumZViewport = float('inf')
+    maximumZViewport = float('-inf')
+    for pointIndex in xrange(0, numberOfPoints):
+      pointRas = [0,0,0]
+      pointsRas.GetPoint(pointIndex,pointRas)
+      pointViewport = self.convertRasToViewport(viewNode,pointRas)
+      xViewport = pointViewport[0]
+      if xViewport < minimumXViewport:
+        minimumXViewport = xViewport
+      if xViewport > maximumXViewport:
+        maximumXViewport = xViewport
+      yViewport = pointViewport[1]
+      if yViewport < minimumYViewport:
+        minimumYViewport = yViewport
+      if yViewport > maximumYViewport:
+        maximumYViewport = yViewport
+      zViewport = pointViewport[2]
+      if zViewport < minimumZViewport:
+        minimumZViewport = zViewport
+      if zViewport > maximumZViewport:
+        maximumZViewport = zViewport
+    extentsViewport = [minimumXViewport,maximumXViewport,minimumYViewport,maximumYViewport,minimumZViewport,maximumZViewport]
+    return extentsViewport
+
+  def convertRasToViewport(self, viewNode, positionRas):
+    """Computes normalized view coordinates from RAS coordinates for a particular view
+    Normalized view coordinates origin is in bottom-left corner, range is [-1,+1]
+    """
+    x = vtk.mutable(positionRas[0])
+    y = vtk.mutable(positionRas[1])
+    z = vtk.mutable(positionRas[2])
+    view = slicer.app.layoutManager().threeDWidget(self.getThreeDWidgetIndex(viewNode)).threeDView()
+    renderer = view.renderWindow().GetRenderers().GetItemAsObject(0)
+    renderer.WorldToView(x,y,z)
+    return [x.get(), y.get(), z.get()]
+
+  def getThreeDWidgetIndex(self, viewNode):
+    if (not viewNode):
+      logging.error("Error in getThreeDWidgetIndex: No View node selected. Returning 0.")
+      return 0
+    layoutManager = slicer.app.layoutManager()
+    for threeDViewIndex in xrange(layoutManager.threeDViewCount):
+      threeDViewNode = layoutManager.threeDWidget(threeDViewIndex).threeDView().mrmlViewNode()
+      if (threeDViewNode == viewNode):
+        return threeDViewIndex
+    logging.error("Error in getThreeDWidgetIndex: Can't find the index. Selected View does not exist? Returning 0.")
+    return 0
+
+  def resetCameraClippingRange(self, viewNode):
+    view = slicer.app.layoutManager().threeDWidget(self.getThreeDWidgetIndex(viewNode)).threeDView()
+    renderer = view.renderWindow().GetRenderers().GetItemAsObject(0)
+    renderer.ResetCameraClippingRange()
 
 
 class ViewCenterTestingTest(ScriptedLoadableModuleTest):

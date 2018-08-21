@@ -70,12 +70,12 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
 
     self.startIndexSpinBox = qt.QSpinBox()
     self.startIndexSpinBox.setMinimum(0)
-    self.startIndexSpinBox.setMaximum(10000)
+    self.startIndexSpinBox.setMaximum(100000)
     parametersFormLayout.addRow("Start Index:", self.startIndexSpinBox)
 
     self.endIndexSpinBox = qt.QSpinBox()
     self.endIndexSpinBox.setMinimum(0)
-    self.endIndexSpinBox.setMaximum(10000)
+    self.endIndexSpinBox.setMaximum(100000)
     parametersFormLayout.addRow("End Index:", self.endIndexSpinBox)
 
     self.goToStartButton = qt.QPushButton("Go to start")
@@ -99,9 +99,11 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     self.leftViewSaveLoadLabel = qt.QLabel("Save/Load: ")
     self.leftViewLayout.addWidget(self.leftViewSaveLoadLabel)
     self.leftTransformComboBox = slicer.qMRMLNodeComboBox()
+    self.leftTransformComboBox.setMRMLScene(slicer.mrmlScene)
     self.leftTransformComboBox.nodeTypes = ["vtkMRMLLinearTransformNode"]
     self.leftTransformComboBox.selectNodeUponCreation = True
     self.leftTransformComboBox.addEnabled = True
+    self.leftTransformComboBox.renameEnabled = True
     self.leftTransformComboBox.removeEnabled = False
     self.leftTransformComboBox.noneEnabled = True
     self.leftTransformComboBox.showHidden = False
@@ -135,9 +137,11 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     self.rightViewSaveLoadLabel = qt.QLabel("Save/Load: ")
     self.rightViewLayout.addWidget(self.rightViewSaveLoadLabel)
     self.rightTransformComboBox = slicer.qMRMLNodeComboBox()
+    self.rightTransformComboBox.setMRMLScene(slicer.mrmlScene)
     self.rightTransformComboBox.nodeTypes = ["vtkMRMLLinearTransformNode"]
     self.rightTransformComboBox.selectNodeUponCreation = True
     self.rightTransformComboBox.addEnabled = True
+    self.rightTransformComboBox.renameEnabled = True
     self.rightTransformComboBox.removeEnabled = False
     self.rightTransformComboBox.noneEnabled = True
     self.rightTransformComboBox.showHidden = False
@@ -158,6 +162,7 @@ class ViewCenterTestingWidget(ScriptedLoadableModuleWidget):
     self.screenCoordinatesTableComboBox.nodeTypes = ["vtkMRMLTableNode"]
     self.screenCoordinatesTableComboBox.selectNodeUponCreation = True
     self.screenCoordinatesTableComboBox.addEnabled = True
+    self.screenCoordinatesTableComboBox.renameEnabled = True
     self.screenCoordinatesTableComboBox.removeEnabled = False
     self.screenCoordinatesTableComboBox.noneEnabled = True
     self.screenCoordinatesTableComboBox.showHidden = False

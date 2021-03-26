@@ -21,6 +21,7 @@ include(${Slicer_USE_FILE})
 # Extension modules
 add_subdirectory(LumpNavReplay)
 add_subdirectory(ViewCenterTesting)
+add_subdirectory(TrackedPicoscope)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------
